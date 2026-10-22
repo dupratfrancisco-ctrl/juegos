@@ -71,9 +71,8 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 .rules ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:5px;max-width:65ch}
 
 /* Jugadores */
-.players{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-2px;padding:2px}
-.players::-webkit-scrollbar{display:none}
-.pl{display:flex;align-items:center;gap:6px;flex:0 0 auto;white-space:nowrap;background:rgba(0,0,0,.28);border-radius:999px;padding:4px 10px 4px 5px;font-size:.86rem}
+.players{display:flex;gap:5px;flex-wrap:wrap}
+.pl{display:flex;align-items:center;gap:5px;white-space:nowrap;background:rgba(0,0,0,.28);border-radius:999px;padding:3px 9px 3px 4px;font-size:.82rem}
 .pl.turn{box-shadow:inset 0 0 0 2px var(--gold);font-weight:700}
 .pl.out{opacity:.45;text-decoration:line-through}
 .pl .st{color:var(--muted);font-size:.8rem}
@@ -170,8 +169,17 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 .chatlog li.none{color:var(--muted);font-size:.92rem}
 .quick{display:flex;flex-wrap:wrap;gap:6px}
 .quick .chip{font-size:.88rem}
-@media (max-height:520px) and (orientation:landscape){.chat{max-height:85vh}.mapwrap{height:78vh}}
-@media (min-width:900px){
+@media (max-height:520px) and (orientation:landscape){.chat{max-height:85vh}}
+/* Celular acostado: el mapa a la izquierda con todo el alto, los controles a la derecha */
+@media (orientation:landscape) and (max-height:560px) and (min-width:560px){
+  #app{max-width:none;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(250px,1fr);align-items:start;column-gap:10px;padding-block:6px 80px}
+  #app>.mapcol{grid-column:1;grid-row:1 / span 8;position:sticky;top:6px}
+  #app>*:not(.mapcol){grid-column:2}
+  .mapwrap{height:calc(100dvh - 12px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));min-height:0}
+  .status{min-height:0}
+  .mapwrap .hint{display:none}
+}
+@media (min-width:900px) and (min-height:561px){
   #app{max-width:1280px;display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);align-items:start}
   #app>.wide{grid-column:1/-1}
   #app>.mapcol{grid-column:1;grid-row:2 / span 6}

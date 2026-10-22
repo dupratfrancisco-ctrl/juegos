@@ -93,7 +93,7 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 .shown{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 
 /* Tablero: pasillos de baldosas grises sobre fondo verde, habitaciones con marco amarillo y cartel ovalado */
-.bd{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));grid-template-rows:repeat(25,minmax(0,1fr));gap:1px;aspect-ratio:24/25;width:100%;max-width:min(100%,calc((100dvh - 120px)*.96));margin-inline:auto;background:#7d8a7f;padding:2.2%;border-radius:10px;box-shadow:inset 0 0 0 9px #1f5a2c,0 0 0 3px #123d1c;touch-action:none;-webkit-user-select:none;user-select:none;position:relative}
+.bd{container-type:inline-size;display:grid;grid-template-columns:repeat(24,minmax(0,1fr));grid-template-rows:repeat(25,minmax(0,1fr));gap:1px;aspect-ratio:24/25;width:100%;max-width:min(100%,calc((100dvh - 120px)*.96));margin-inline:auto;background:#7d8a7f;padding:2.2%;border-radius:10px;box-shadow:inset 0 0 0 9px #1f5a2c,0 0 0 3px #123d1c;touch-action:none;-webkit-user-select:none;user-select:none;position:relative}
 .bd *{touch-action:none}
 .hc{background:#e9e9e4;border-radius:1px;padding:0;position:relative;display:grid;place-items:center;min-width:0;min-height:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.6)}
 .hc.door{background:#f6e7a8}
@@ -104,17 +104,17 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 .tok.me{box-shadow:0 0 0 2px var(--brass),0 1px 2px rgba(0,0,0,.6)}
 .rm{position:relative;background:var(--floor);border-radius:3px;box-shadow:0 0 0 2px #f2b705,inset 0 0 0 4px var(--wall),inset 0 0 0 5px rgba(0,0,0,.35),0 3px 6px rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0;min-height:0;overflow:hidden;color:#1d2430;text-align:center;z-index:1}
 .rm .art{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.rm .rn{position:relative;font-family:var(--f-head);font-weight:700;font-size:clamp(.5rem,2.3vw,.8rem);line-height:1.05;background:#f7d417;border:1.5px solid #4a3a00;border-radius:999px;padding:2px 7px;max-width:94%;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.rm .rn{position:relative;font-family:var(--f-head);font-weight:700;font-size:clamp(6px,2.35cqw,14px);line-height:1.05;background:#f7d417;border:1.5px solid #4a3a00;border-radius:999px;padding:2px 7px;max-width:94%;box-shadow:0 1px 2px rgba(0,0,0,.4)}
 .rm .tk{position:relative;display:flex;flex-wrap:wrap;justify-content:center;gap:1px}
-.rm .tk .tok{width:clamp(8px,2.6vw,13px);height:clamp(8px,2.6vw,13px)}
-.rm .wp{position:relative;font-size:clamp(.5rem,2.2vw,.75rem);line-height:1}
+.rm .tk .tok{width:clamp(7px,2.6cqw,15px);height:clamp(7px,2.6cqw,15px)}
+.rm .wp{position:relative;font-size:clamp(7px,2.3cqw,13px);line-height:1}
 .rm.reach{box-shadow:0 0 0 3px #7fd6a5,inset 0 0 0 4px var(--wall),0 3px 6px rgba(0,0,0,.45);cursor:pointer}
 .rm.here{box-shadow:0 0 0 3px var(--brass),inset 0 0 0 4px var(--wall),0 3px 6px rgba(0,0,0,.45)}
-.rm .ps{position:absolute;bottom:5px;right:5px;font-family:var(--f-head);font-weight:700;font-size:clamp(.38rem,1.6vw,.58rem);background:#fff27a;color:#3a2a00;padding:1px 4px;border-radius:2px;transform:rotate(-4deg);box-shadow:0 1px 2px rgba(0,0,0,.35);max-width:70%;line-height:1.1}
+.rm .ps{position:absolute;bottom:5px;right:5px;font-family:var(--f-head);font-weight:700;font-size:clamp(5px,1.65cqw,10px);background:#fff27a;color:#3a2a00;padding:1px 4px;border-radius:2px;transform:rotate(-4deg);box-shadow:0 1px 2px rgba(0,0,0,.35);max-width:70%;line-height:1.1}
 .ctr{background:#1f5a2c;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:inset 0 0 0 3px #f2b705,0 3px 6px rgba(0,0,0,.4)}
-.ctr .cl{font-family:var(--f-display);font-size:clamp(1.2rem,7vw,2.6rem);color:#f2711c;-webkit-text-stroke:1px #4a1d00;text-shadow:0 3px 0 #4a1d00;line-height:1}
-.ctr .sp{font-family:var(--f-head);font-weight:700;font-size:clamp(.45rem,2vw,.75rem);background:#fff;color:#1d2430;padding:1px 6px;transform:rotate(-6deg);box-shadow:0 1px 2px rgba(0,0,0,.4)}
-.ctr .dn{font-size:clamp(.9rem,4.5vw,1.6rem)}
+.ctr .cl{font-family:var(--f-display);font-size:clamp(14px,7.5cqw,44px);color:#f2711c;-webkit-text-stroke:1px #4a1d00;text-shadow:0 3px 0 #4a1d00;line-height:1}
+.ctr .sp{font-family:var(--f-head);font-weight:700;font-size:clamp(6px,2.1cqw,13px);background:#fff;color:#1d2430;padding:1px 6px;transform:rotate(-6deg);box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.ctr .dn{font-size:clamp(10px,4.6cqw,28px)}
 
 /* Libreta */
 .nb{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -154,7 +154,15 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 .quick{display:flex;flex-wrap:wrap;gap:6px}
 .quick .chip{font-size:.88rem}
 @media (max-height:520px) and (orientation:landscape){.chat{max-height:85vh}}
-@media (min-width:900px){
+/* Celular acostado: el tablero a la izquierda con todo el alto, el resto a la derecha */
+@media (orientation:landscape) and (max-height:560px) and (min-width:560px){
+  #app{max-width:none;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;column-gap:12px;padding-block:8px 80px}
+  #app>.boardcol{grid-column:1;grid-row:1 / span 8;position:sticky;top:8px}
+  #app>*:not(.boardcol){grid-column:2}
+  .bd{width:calc(100dvh - 16px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));max-width:none}
+  .status{min-height:0}
+}
+@media (min-width:900px) and (min-height:561px){
   #app{max-width:1100px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
   #app>.wide{grid-column:1/-1}
 }
@@ -698,7 +706,7 @@ const VIEWS = {
     const g=S.game, me=seat();
     return `${playersHTML()}
       <div>${statusHTML()}</div>
-      <div>${boardHTML()}</div>
+      <div class="boardcol">${boardHTML()}</div>
       <section class="panel"><span class="label">${g.mode==="local"?esc(nickOf(me))+": tus cartas":"Tus cartas"}${g.out[me]?" · quedaste afuera, pero seguís mostrando":""}</span><div class="chips">${g.hands[me].map(c=>cardHTML(c)).join("")}</div></section>
       ${notebookHTML()}
       ${histHTML()}
