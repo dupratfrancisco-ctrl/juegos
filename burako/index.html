@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Burako</title>
+<meta name="description" content="Burako para 2 a 4 jugadores: online con código, contra la IA o en el mismo celular.">
+<meta name="theme-color" content="#0b2e23">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Burako">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Roboto+Slab:wght@700;800&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+/* Pantalla fija: sin zoom por doble toque ni por pellizco */
+html,body{touch-action:pan-x pan-y}
+button,a,input,[role=button]{touch-action:manipulation}
+input,textarea{font-size:max(16px,1em)}
+[hidden]{display:none!important}
+/* Layout: one-column phone app on a green felt card table with a wooden rail; ivory tiles with red, blue, yellow and black numbers; your hand docks at the bottom. Single committed look. */
+:root{
+  --felt:#0b2e23; --felt-2:#124232; --felt-3:#1a5a43; --rail:#5a3518; --rail-2:#7a4a24;
+  --ivory:#f8f2e2; --ivory-2:#e3d8bd; --ink:#1d1a14;
+  --t0:#c62828; --t1:#1857b8; --t2:#d08a00; --t3:#1b1b1b;
+  --brass:#f2bd4b; --brass-ink:#2a1a02; --ok:#5ccf8f; --bad:#ff7a6b;
+  --fg:#eef6f1; --muted:#9fc2b2;
+  --f-display:"Alfa Slab One","Rockwell","Georgia",serif;
+  --f-tile:"Roboto Slab","Rockwell","Georgia",serif;
+  --f-head:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"Barlow",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--felt);background-image:radial-gradient(120% 70% at 50% 0%,#1a5a43 0%,transparent 65%),repeating-radial-gradient(circle at 30% 20%,rgba(255,255,255,.012) 0 2px,transparent 2px 4px);background-attachment:fixed;color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.45}
+#app{max-width:620px;margin:0 auto;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));padding-block:14px 40px;display:flex;flex-direction:column;gap:12px}
+body.playing #app{padding-bottom:calc(var(--dock,200px) + 16px)}
+h1,h2,h3{margin:0;text-wrap:balance}
+p{margin:0}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;-webkit-tap-highlight-color:transparent;color:inherit}
+button:focus-visible,input:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn{background:var(--brass);color:var(--brass-ink);font-family:var(--f-head);font-weight:700;font-size:1.1rem;letter-spacing:.05em;text-transform:uppercase;padding:12px 16px;min-height:48px;box-shadow:0 3px 0 #a37a22}
+.btn:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #a37a22}
+.btn.ghost{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 2px var(--felt-3)}
+.btn.small{font-size:.92rem;min-height:38px;padding:7px 11px}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1 1 130px}
+input[type=text]{width:100%;font:inherit;font-size:1.05rem;padding:11px 13px;border-radius:10px;border:2px solid var(--felt-3);background:#071f17;color:var(--fg)}
+input[type=text]::placeholder{color:#5f8574}
+.label{font-family:var(--f-head);font-weight:600;font-size:.85rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}.center{text-align:center}
+.mast{display:flex;align-items:center;gap:12px;padding-top:4px}
+.brand{font-family:var(--f-display);font-weight:400;font-size:clamp(2.4rem,12vw,3.4rem);line-height:1;color:var(--ivory);letter-spacing:.02em;text-shadow:0 3px 0 var(--rail)}
+.mast .tiles{display:flex;gap:4px}
+.panel{background:var(--felt-2);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:11px;box-shadow:inset 0 0 0 2px var(--rail),0 6px 16px rgba(0,0,0,.25)}
+.field{display:flex;flex-direction:column;gap:6px}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;background:#071f17;font-family:var(--f-head);font-weight:700;font-size:1.05rem;padding:9px 0;box-shadow:inset 0 0 0 2px var(--felt-3)}
+.seg button[aria-pressed=true]{background:var(--ivory);color:var(--ink);box-shadow:none}
+.ask{display:flex;gap:8px}.ask input{flex:1;min-width:0}.ask .btn{flex:0 0 auto}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem;font-weight:600}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--felt-3)}
+.err{color:var(--bad);font-weight:600}
+.netst{font-size:.9rem;font-weight:600;color:var(--muted)}.netst.ok{color:var(--ok)}.netst.fail{color:var(--bad)}
+.linkbtn{background:none;text-decoration:underline;font-weight:700;padding:0 4px}
+.code{font-family:var(--f-display);font-size:clamp(3rem,16vw,4.3rem);letter-spacing:.14em;line-height:1;color:var(--ivory);text-align:center;padding:8px 0;border-block:2px dashed var(--felt-3)}
+.rules ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:5px;max-width:65ch}
+details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+
+/* Fichas */
+.tile{--w:34px;width:var(--w);height:calc(var(--w)*1.36);border-radius:6px;background:linear-gradient(180deg,#fffaf0 0%,var(--ivory) 60%,var(--ivory-2) 100%);box-shadow:0 2px 0 #b9ad8e,0 3px 6px rgba(0,0,0,.35);display:grid;place-items:center;font-family:var(--f-tile);font-weight:800;font-size:calc(var(--w)*.56);line-height:1;padding:0;position:relative;flex:0 0 auto;transition:transform .12s}
+.tile.c0{color:var(--t0)}.tile.c1{color:var(--t1)}.tile.c2{color:var(--t2)}.tile.c3{color:var(--t3)}
+.tile.j{color:var(--t0)}
+
+/* Como las fichas reales: número arriba y un círculo abajo, del mismo color */
+.tile{display:flex;flex-direction:column;align-items:center;justify-content:center}
+/* Número o símbolo en la parte de arriba y el círculo siempre del mismo tamaño y en el mismo lugar,
+   proporcional a la ficha como en la ficha real (alrededor de un quinto del ancho). */
+.tile{justify-content:flex-start;padding-top:calc(var(--w)*.17)}
+.tile .n{font:inherit;line-height:1}
+.tile .jk{width:62%;height:auto;display:block;margin-top:calc(var(--w)*.02)}
+.tile .dot{position:absolute;left:50%;bottom:calc(var(--w)*.17);width:calc(var(--w)*.21);height:calc(var(--w)*.21);transform:translateX(-50%);border-radius:50%;background:currentColor}
+
+.tile.sm{--w:24px;border-radius:4px;box-shadow:0 1px 0 #b9ad8e}
+.tile.xs{--w:18px;border-radius:3px;box-shadow:0 1px 0 #b9ad8e}
+.tile.back{background:repeating-linear-gradient(45deg,var(--rail) 0 4px,var(--rail-2) 4px 8px);box-shadow:0 2px 0 #3a2210}
+.hand .tile{--w:clamp(30px,8.6vw,40px)}
+.hand .tile[aria-pressed=true]{transform:translateY(-9px);box-shadow:0 0 0 3px var(--brass),0 6px 10px rgba(0,0,0,.45)}
+.hand .tile.new{box-shadow:0 0 0 3px var(--ok),0 3px 8px rgba(0,0,0,.4)}
+.hand .tile.new::before{content:"";position:absolute;top:-5px;right:-5px;width:11px;height:11px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 2px var(--rail)}
+.hand .tile.new[aria-pressed=true]{box-shadow:0 0 0 3px var(--ok),0 0 0 6px var(--brass),0 6px 10px rgba(0,0,0,.45)}
+
+/* Mesa */
+.score{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px}
+.team{background:var(--felt-2);border-radius:12px;padding:8px 10px;box-shadow:inset 0 0 0 2px var(--felt-3);min-width:0}
+.team.mine{box-shadow:inset 0 0 0 2px var(--brass)}
+.team .nm{font-family:var(--f-head);font-weight:700;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team .pts{font-family:var(--f-display);font-size:1.25rem;font-variant-numeric:tabular-nums}
+.team .sub{font-size:.78rem;color:var(--muted)}
+.players{display:flex;gap:6px;flex-wrap:wrap}
+.pl{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.2);border-radius:999px;padding:4px 10px 4px 6px;font-size:.88rem}
+.pl.turn{background:var(--brass);color:var(--brass-ink);font-weight:700}
+.pl .cnt{font-family:var(--f-head);font-weight:700;background:rgba(0,0,0,.25);border-radius:999px;padding:0 7px}
+.pl.turn .cnt{background:rgba(0,0,0,.15)}
+.table{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pile{background:var(--felt-2);border-radius:12px;padding:10px;display:flex;align-items:center;gap:10px;box-shadow:inset 0 0 0 2px var(--felt-3);min-width:0}
+.pile .txt{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pile .btn{font-size:.88rem;min-height:34px;padding:5px 9px}
+.dpile{background:rgba(0,0,0,.18);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.dpile .dts{display:flex;flex-wrap:wrap;gap:4px 3px}
+.dpile .tile.top{box-shadow:0 0 0 2px var(--brass),0 1px 0 #b9ad8e}
+.status{border-radius:12px;padding:10px 12px;background:var(--felt-3);display:flex;flex-direction:column;gap:4px}
+.status.me{box-shadow:inset 0 0 0 2px var(--brass)}
+.status h2{font-family:var(--f-head);font-weight:700;font-size:1.25rem}
+.melds{display:flex;flex-direction:column;gap:6px}
+.meld{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(0,0,0,.18);border-radius:10px;padding:7px 8px;text-align:left;width:100%}
+.meld .ts{display:flex;gap:2px;flex-wrap:wrap}
+.meld .madd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:0;background:none;padding:0;text-align:left}
+.mwild{flex:0 0 auto;background:rgba(0,0,0,.3);font-family:var(--f-head);font-weight:600;font-size:.82rem;padding:5px 9px;border-radius:999px;color:var(--fg)}
+.meld.can-add{box-shadow:inset 0 0 0 2px var(--brass);background:rgba(242,189,75,.12)}
+.badge{font-family:var(--f-head);font-weight:700;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--felt-3)}
+.badge.pura{background:var(--ok);color:#052012}.badge.impura{background:#c9a26b;color:#2a1a02}
+.empty{color:var(--muted);font-size:.9rem}
+
+/* Mano */
+.dock{position:fixed;z-index:15;left:0;right:0;bottom:0;background:linear-gradient(180deg,var(--rail-2),var(--rail));box-shadow:0 -8px 22px rgba(0,0,0,.45);padding:10px max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));max-height:46vh;display:flex;flex-direction:column;gap:8px}
+.dock>*{max-width:620px;width:100%;margin-inline:auto}
+.dock .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dock .label{color:#f3dcc0}
+.hand{display:flex;flex-wrap:wrap;gap:5px 4px;overflow-y:auto;padding:10px 2px 2px;min-height:60px}
+.acts{display:flex;gap:6px}.acts .btn{flex:1;font-size:.95rem;min-height:42px;padding:6px 8px}
+.sorts{display:flex;gap:4px}
+.sortbtn[aria-pressed=true]{background:#f3dcc0;color:var(--rail)}
+.draghint{font-size:.8rem;color:#f3dcc0;opacity:.85;margin-top:-4px}
+.hand .tile{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.hand .tile.dragging{opacity:.25}
+.tile.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;box-shadow:0 0 0 3px var(--brass),0 10px 20px rgba(0,0,0,.5)}
+.sortbtn{background:rgba(0,0,0,.25);font-family:var(--f-head);font-weight:600;font-size:.85rem;padding:4px 10px;border-radius:999px;color:#f3dcc0}
+
+.log ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:.9rem;max-height:150px;overflow-y:auto}
+.log li b{font-family:var(--f-head);letter-spacing:.03em}
+.res{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.95rem}
+.res th,.res td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--felt-3)}
+.res th:first-child,.res td:first-child{text-align:left}
+.res tr.tot td{font-weight:700;border-bottom:0}
+.verdict{font-family:var(--f-display);font-size:clamp(1.9rem,8vw,2.6rem);line-height:1.05;text-align:center;color:var(--brass)}
+.cover{min-height:55vh;display:flex;flex-direction:column;justify-content:center;gap:14px;text-align:center}
+.cover .who{font-family:var(--f-display);font-size:clamp(2.2rem,11vw,3.2rem);color:var(--brass)}
+.seats{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.seats li{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border-radius:10px;padding:8px 10px}
+.seats li .n{flex:1;font-weight:600}
+.meldgrid{display:flex;flex-direction:column;gap:12px}
+@media (min-width:900px){
+  #app,.dock>*{max-width:1040px}
+  .meldgrid{display:grid;grid-template-columns:1fr 1fr;align-items:start}
+  .hand .tile{--w:44px}
+}
+/* Celular acostado: poca altura, mano y botones más compactos */
+@media (max-height:520px) and (orientation:landscape){
+  .dock{max-height:56vh;padding-top:6px;gap:5px}
+  .hand{padding-top:8px;min-height:44px}
+  .hand .tile{--w:32px}
+  .acts .btn{min-height:36px}
+  .chat{max-height:85vh}
+}
+@media (min-width:700px){.chat{border-radius:18px 18px 0 0;bottom:0}}
+html,body{overscroll-behavior:none}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;background:#03140e;color:var(--fg);box-shadow:0 0 0 2px var(--brass);padding:12px 16px;border-radius:12px;max-width:min(520px,calc(100vw - 32px));font-size:.95rem}
+body.playing .toast{bottom:calc(var(--dock,200px) + 12px)}
+
+/* Chat */
+.chatbtn{position:fixed;z-index:22;right:max(14px,calc(env(safe-area-inset-right,0px) + 12px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--brass);color:var(--brass-ink);font-family:var(--f-head);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:11px 16px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+body.playing .chatbtn{bottom:calc(var(--dock,200px) + 10px);padding:8px 13px}
+.chatbtn .cbadge{position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--t0);color:#fff;font-size:.8rem;display:grid;place-items:center;letter-spacing:0}
+.chat{position:fixed;z-index:30;left:0;right:0;bottom:0;max-height:70vh;display:flex;flex-direction:column;gap:10px;background:var(--felt-2);box-shadow:0 -10px 30px rgba(0,0,0,.5);border-radius:18px 18px 0 0;padding:14px max(14px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
+.chat{max-width:680px;margin-inline:auto}
+.chat>*{width:100%;min-width:0}
+.chat .ask input{min-width:0}
+.chathead{display:flex;align-items:baseline;gap:10px}.chathead b{font-family:var(--f-head);font-size:1.3rem}.chathead .linkbtn{margin-left:auto}
+.chatlog{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-height:120px;flex:1}
+.chatlog li{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.chatlog li small{font-size:.75rem;color:var(--muted);padding-left:6px}
+.chatlog li span{max-width:80%;padding:8px 12px;border-radius:14px 14px 14px 4px;background:var(--felt-3);overflow-wrap:anywhere}
+.chatlog li.mine{align-items:flex-end}.chatlog li.mine span{background:var(--brass);color:var(--brass-ink);border-radius:14px 14px 4px 14px}
+.chatlog li.none{color:var(--muted);font-size:.92rem}
+.quick{display:flex;flex-wrap:wrap;gap:6px}
+.chip{flex:0 0 auto;background:var(--felt-3);font-size:.9rem;padding:7px 11px;border-radius:999px}
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<div id="dock" class="dock" hidden></div>
+<button id="chatbtn" class="chatbtn" type="button" aria-label="Abrir el chat" hidden>Chat<span id="chatbadge" class="cbadge" hidden></span></button>
+<section id="chat" class="chat" role="dialog" aria-label="Chat de la partida" hidden>
+  <div class="chathead"><b>Chat</b><button type="button" class="linkbtn" id="chatclose">Cerrar</button></div>
+  <ol id="chatlog" class="chatlog"></ol>
+  <div class="quick"></div>
+  <form id="chatform" class="ask" autocomplete="off"><input type="text" id="chatin" maxlength="200" placeholder="Escribí un mensaje" enterkeyhint="send"><button class="btn small" type="submit">Enviar</button></form>
+</section>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="mqtt.min.js"></script>
+<script src="engine.js"></script>
+<script>
+// Safari ignora user-scalable=no: el pellizco se bloquea a mano.
+["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+</script>
+<script>
+const E = Burako;
+/* ===== Utilidades ===== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const rid = () => Math.random().toString(36).slice(2,10);
+const LS = {
+  get(k){ try { return JSON.parse(localStorage.getItem("burako:"+k)); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem("burako:"+k, JSON.stringify(v)); } catch {} },
+};
+let toastT;
+function toast(msg, ms=3800){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true, ms); }
+function buzz(p=[60,40,60]){ try { navigator.vibrate && navigator.vibrate(p); } catch {} }
+
+/* ===== Red =====
+   Las partidas viajan por un servidor MQTT público (sin cuentas). Cada partida es un tema con el
+   último estado retenido. Toda la partida viaja junta: la pantalla solo muestra tus fichas. */
+const qs = new URLSearchParams(location.search);
+const BROKERS = qs.get("broker") ? [qs.get("broker")] : [
+  "wss://broker.hivemq.com:8884/mqtt",
+  "wss://broker.emqx.io:8084/mqtt",
+  "wss://test.mosquitto.org:8081/mqtt",
+  "wss://mqtt.eclipseprojects.io:443/mqtt",
+];
+const TOPIC = code => "fd-burako/v1/" + code;
+const isObj = v => v && typeof v==="object" && !Array.isArray(v);
+function merge(base, patch){
+  const out = isObj(base) ? {...base} : {};
+  for (const k in patch) out[k] = isObj(patch[k]) && isObj(out[k]) ? merge(out[k], patch[k]) : patch[k];
+  return out;
+}
+const Net = {
+  client:null, games:{}, waiters:{}, subs:new Set(),
+  tryBroker(url){
+    return new Promise((res, rej) => {
+      const c = mqtt.connect(url, {clientId:"bk_"+rid()+rid(), clean:true, keepalive:30, reconnectPeriod:0, connectTimeout:7000});
+      const fail = () => { clearTimeout(t); try { c.end(true); } catch {} rej(); };
+      const t = setTimeout(fail, 8000);
+      c.once("connect", () => { clearTimeout(t); res(c); });
+      c.once("error", fail);
+    });
+  },
+  connect(){ return this._p || (this._p = this._connect().finally(() => { this._p = null; })); },
+  async _connect(){
+    if (this.client?.connected) return;
+    if (this.client){ try { this.client.end(true); } catch {} this.client=null; }
+    for (const url of BROKERS){
+      try { this.client = await this.tryBroker(url); break; } catch {}
+    }
+    if (!this.client) throw new Error("net");
+    const c = this.client;
+    c.options.reconnectPeriod = 2000;
+    let wasOff = false;
+    c.on("offline", () => { setNet("connecting"); if (!wasOff){ wasOff=true; toast("Sin internet. Reconectando…", 4000); } });
+    c.on("connect", () => { setNet("ok"); if (wasOff){ wasOff=false; toast("Conectado de nuevo."); } for (const tp of this.subs) c.subscribe(tp, {qos:1}); });
+    c.on("message", (topic, buf) => {
+      const code = topic.split("/").pop();
+      let data = null;
+      if (buf.length) { try { data = JSON.parse(buf.toString()); } catch { return; } }
+      const g = this.games[code] || (this.games[code] = {data:null, seen:false, fns:new Set()});
+      if (data && g.data && (data.rev||0) < (g.data.rev||0)) return;
+      g.data = data; g.seen = true;
+      (this.waiters[code]||[]).forEach(f=>f()); delete this.waiters[code];
+      g.fns.forEach(fn => fn());
+    });
+  },
+  acks:{},
+  sub(code){
+    const tp = TOPIC(code);
+    if (!this.subs.has(tp)){
+      this.subs.add(tp);
+      this.acks[tp] = new Promise(r => this.client.subscribe(tp, {qos:1}, () => r()));
+    }
+    return this.games[code] || (this.games[code] = {data:null, seen:false, fns:new Set()});
+  },
+  publish(code, data){
+    const g = this.sub(code); g.data = data; g.seen = true;
+    g.fns.forEach(fn => fn());
+    return new Promise((res, rej) => this.client.publish(TOPIC(code), JSON.stringify(data), {qos:1, retain:true}, e => e ? rej({code:"unavailable"}) : res()));
+  },
+};
+const snapOf = d => ({exists:!!d, data:()=>d});
+function gameRef(code){
+  return {
+    get(){
+      const g = Net.sub(code);
+      if (g.seen) return Promise.resolve(snapOf(g.data));
+      // Un tema sin mensaje retenido no responde. El servidor manda el mensaje retenido apenas confirma
+      // la suscripción, así que si poco después no llegó nada, la partida no existe.
+      return new Promise(res => {
+        let over = false;
+        const fin = () => { if (over) return; over = true; res(snapOf(Net.games[code].data)); };
+        (Net.waiters[code] ||= []).push(fin);
+        Net.acks[TOPIC(code)].then(() => setTimeout(fin, 900));
+        setTimeout(fin, 6000);
+      });
+    },
+    set(data){ return Net.publish(code, {...data, rev:((Net.games[code]?.data?.rev)||0)+1}); },
+    update(patch){
+      const cur = Net.games[code]?.data;
+      if (!cur) return Promise.reject({code:"invalid_argument"});
+      return Net.publish(code, {...merge(cur, patch), rev:(cur.rev||0)+1});
+    },
+    onSnapshot(next){
+      const g = Net.sub(code), fn = () => next(snapOf(g.data));
+      g.fns.add(fn); if (g.seen) setTimeout(fn, 0);
+      return () => g.fns.delete(fn);
+    },
+  };
+}
+function localRef(path){
+  const k = "doc:" + path;
+  return {
+    get: async () => { const d = LS.get(k); return snapOf(d); },
+    set: async d => LS.set(k, d),
+  };
+}
+// Partidas contra la IA y de "pasar el celular": viven solo en este teléfono, sin internet.
+const Local = {};
+function localGameRef(path){
+  const k = "doc:" + path;
+  const st = Local[path] || (Local[path] = {data:LS.get(k), fns:new Set()});
+  const pub = d => { st.data = d; LS.set(k, d); setTimeout(() => st.fns.forEach(f=>f()), 0); return Promise.resolve(); };
+  return {
+    get: async () => snapOf(st.data),
+    set: d => pub({...d, rev:(st.data?.rev||0)+1}),
+    update: p => st.data ? pub({...merge(st.data, p), rev:(st.data.rev||0)+1}) : Promise.reject({code:"invalid_argument"}),
+    onSnapshot(next){ const fn = () => next(snapOf(st.data)); st.fns.add(fn); if (st.data) setTimeout(fn, 0); return () => st.fns.delete(fn); },
+    peek: () => st.data,
+  };
+}
+const isLocal = code => /^(IA|LP)/.test(code||"");
+const NetDB = { doc: p => /^games\/(IA|LP)/.test(p) ? localGameRef(p) : p.startsWith("games/") ? gameRef(p.slice(6)) : localRef(p) };
+
+/* ===== Estado ===== */
+const S = {
+  db:null, uid:null, status:"loading", net:"", netOk:false,
+  nick: LS.get("nick") || "", level: LS.get("level") || "medio", target: LS.get("target") || 3000,
+  nOnline: 2, nAI: 2, nLocal: 2, names: LS.get("names") || ["","","",""],
+  code:null, game:null, unsub:null, activeSeat:null,
+  sel:new Set(), sort: LS.get("sort") || "color", joinCode:"", joinErr:"",
+};
+const ref = () => S.db.doc("games/"+S.code);
+const seat = () => { const g=S.game; if (!g) return null; if (g.mode==="local") return S.activeSeat; const i=(g.seats||[]).findIndex(p=>p && !p.bot && p.uid===S.uid); return i<0 ? null : i; };
+const nickOf = i => S.game?.seats?.[i]?.nick || `Jugador ${i+1}`;
+const teamName = t => { const g=S.game; return E.teamSeats(g,t).map(nickOf).join(" y "); };
+const isHost = () => S.game && (S.game.mode!=="online" || S.game.host===S.uid);
+
+async function save(g){
+  try { await ref().set(g); return true; }
+  catch { await new Promise(r=>setTimeout(r,500)); try { await ref().set(g); return true; } catch { toast("Se cortó la conexión. Probá de nuevo."); return false; } }
+}
+function act(fn){
+  const g=S.game, me=seat();
+  try { const g2 = fn(g, me); save(g2); return true; }
+  catch(e){ toast(e.message || "Esa jugada no se puede hacer."); return false; }
+}
+
+/* ===== Conexión ===== */
+function setNet(state){
+  S.net = state; S.netOk = state==="ok";
+  const el = $("#netst"); if (!el) return;
+  el.className = "netst " + state;
+  el.innerHTML = state==="ok" ? "● Conectado al servidor de partidas"
+    : state==="connecting" ? "● Conectando al servidor de partidas…"
+    : `● Sin conexión al servidor de partidas <button type="button" class="linkbtn" id="netretry">Reintentar</button>`;
+  const r = $("#netretry"); if (r) r.onclick = () => ensureNet();
+}
+async function ensureNet(){
+  if (Net.client?.connected){ setNet("ok"); return true; }
+  setNet("connecting");
+  try { await Net.connect(); setNet("ok"); return true; }
+  catch { setNet("fail"); toast("No hay conexión con el servidor de partidas. Revisá tu internet o jugá contra la IA.", 5000); return false; }
+}
+async function busy(btnId, label, fn){
+  const b = $("#"+btnId); if (!b || b.disabled) return;
+  const old = b.textContent; b.disabled = true; b.textContent = label;
+  try { await fn(); } finally { if (b.isConnected){ b.disabled = false; b.textContent = old; } }
+}
+
+/* ===== Partidas ===== */
+function genCode(){ const L="BCDFGHJKLMNPRSTVXZ"; let c=""; for(let i=0;i<4;i++) c+=L[Math.floor(Math.random()*L.length)]; return c; }
+function saveNick(){
+  const v = ($("#nick")?.value ?? S.nick).trim().slice(0,16);
+  if (!v){ toast("Escribí tu nombre."); $("#nick")?.focus(); return false; }
+  S.nick = v; LS.set("nick", v); return true;
+}
+const base = extra => ({ created:Date.now(), target:S.target, level:S.level, round:0, scores:null, phase:"lobby", ...extra });
+async function createOnline(){
+  if (!saveNick() || !await ensureNet()) return;
+  let code;
+  for (let i=0;i<3;i++){ code=genCode(); const s=await S.db.doc("games/"+code).get().catch(()=>null); if (s && !s.exists) break; }
+  S.code = code;
+  const seats = Array(S.nOnline).fill(null); seats[0] = {uid:S.uid, nick:S.nick};
+  if (!await save(base({code, mode:"online", n:S.nOnline, seats, host:S.uid}))){ S.code=null; return; }
+  await enter(code);
+}
+async function joinGame(raw){
+  if (!saveNick()) return;
+  const code = (raw||"").toUpperCase().replace(/[^A-Z]/g,""); S.joinCode = code;
+  if (code.length!==4){ S.joinErr="El código tiene 4 letras."; render(true); return; }
+  if (!await ensureNet()) return;
+  const snap = await S.db.doc("games/"+code).get().catch(()=>null);
+  if (!snap || !snap.exists){ S.joinErr="No existe una partida con ese código."; render(true); return; }
+  const g = snap.data(); S.code = code;
+  if (g.seats.some(p=>p && p.uid===S.uid && !p.bot)){ await enter(code); return; }
+  const free = g.seats.findIndex(p=>!p);
+  if (g.phase!=="lobby" || free<0){ S.code=null; S.joinErr="Esa partida ya está completa."; render(true); return; }
+  const seats = g.seats.slice(); seats[free] = {uid:S.uid, nick:S.nick};
+  if (!await save({...g, seats})){ S.code=null; return; }
+  await enter(code);
+}
+async function createAI(){
+  if (!saveNick()) return;
+  const code = "IA" + genCode() + Date.now().toString(36).slice(-3).toUpperCase(), n=S.nAI;
+  const seats = Array.from({length:n}, (_,i) => i===0 ? {uid:S.uid, nick:S.nick} : {bot:true, nick: n===4 && i===2 ? "IA compañera" : `IA ${i}`});
+  S.code = code;
+  await NetDB.doc("games/"+code).set(E.newRound(base({code, mode:"ai", n, seats})));
+  await enter(code);
+}
+async function createLocal(){
+  const n=S.nLocal, names=[];
+  for (let i=0;i<n;i++){ const v=($("#lp"+i).value||"").trim().slice(0,16); if (!v){ toast(`Escribí el nombre del jugador ${i+1}.`); $("#lp"+i).focus(); return; } names.push(v); }
+  if (new Set(names.map(x=>x.toLowerCase())).size!==n){ toast("Usen nombres distintos para no confundirse."); return; }
+  S.names = names.concat(S.names.slice(n)); LS.set("names", S.names);
+  const code = "LP" + genCode() + Date.now().toString(36).slice(-3).toUpperCase();
+  S.code = code; S.activeSeat = null;
+  await NetDB.doc("games/"+code).set(E.newRound(base({code, mode:"local", n, seats:names.map(nick=>({uid:S.uid, nick}))})));
+  await enter(code);
+  S.activeSeat = 0;  // quien crea la partida empieza con el celular
+}
+async function enter(code){
+  S.code = code; LS.set("code", code); S.joinErr=""; S.sel = new Set();
+  startChat(code);
+  if (S.unsub) S.unsub();
+  S.unsub = ref().onSnapshot(snap => {
+    if (!snap.exists){ toast("La partida ya no existe."); leave(); return; }
+    S.game = snap.data(); onGame();
+  });
+}
+function leave(){
+  stopChat(); clearTimeout(botT);
+  if (S.unsub) S.unsub(); S.unsub=null; S.game=null; S.code=null; S.activeSeat=null; LS.set("code", null); render(true);
+}
+
+/* ===== Reacciones ===== */
+let botT, lastTurnBuzz = "";
+function onGame(){
+  const g=S.game, me=seat();
+  if (g.mode==="local" && g.phase!=="play" && S.activeSeat==null) S.activeSeat = 0;
+  if (g.phase==="play" && me!=null && g.turn===me && g.step==="draw" && g.mode==="online"){ const k=g.round+":"+(g.log||[]).length; if (k!==lastTurnBuzz){ lastTurnBuzz=k; buzz([50]); } }
+  runBots();
+  render();
+}
+// Las IA juegan en el teléfono del anfitrión (o en el único teléfono, en los modos sin internet).
+function runBots(){
+  clearTimeout(botT);
+  const g=S.game;
+  if (!g || g.phase!=="play" || !isHost() || !g.seats[g.turn]?.bot) return;
+  const rev=g.rev, d = g.step==="draw" ? 700 : 900;
+  botT = setTimeout(() => {
+    const cur=S.game; if (!cur || cur.rev!==rev) return;
+    try { save(E.botStep(cur, cur.turn, cur.level || "medio")); }
+    catch(e){ console.error(e); save(E.discardTile(cur, cur.turn, cur.hands[cur.turn][0])); }
+  }, d + Math.random()*400);
+}
+
+/* ===== Jugadas ===== */
+const selected = () => [...S.sel].filter(id => S.game.hands[seat()]?.includes(id));
+// Lo que robaste en este turno queda marcado en verde hasta que descartes (se guarda por si se recarga la app).
+const drawnKey = () => `drawn:${S.code}:${seat()}`;
+function drawnIds(){
+  const g=S.game, me=seat(), d=LS.get(drawnKey());
+  return d && d.round===g.round && g.turn===me && g.step==="play" ? new Set(d.ids.filter(id=>g.hands[me].includes(id))) : new Set();
+}
+function doDraw(kind){
+  const g=S.game, me=seat(); let g2;
+  try { g2 = kind==="stock" ? E.drawStock(g,me) : E.takeDiscard(g,me); } catch(e){ toast(e.message); return; }
+  const before=new Set(g.hands[me]);
+  LS.set(drawnKey(), {round:g2.round, ids:(g2.hands[me]||[]).filter(id=>!before.has(id))});
+  S.sel=new Set(); save(g2);
+}
+function doMeld(){
+  const ids=selected(); if (ids.length<3){ toast("Elegí al menos 3 fichas para bajar un juego."); return; }
+  if (act((g,me)=>E.meldNew(g,me,ids))) S.sel=new Set();
+}
+function doAdd(mi){
+  const ids=selected(); if (!ids.length){ toast("Elegí las fichas de tu mano y después tocá el juego al que las querés agregar."); return; }
+  if (act((g,me)=>E.addTo(g,me,mi,ids))) S.sel=new Set();
+}
+function doDiscard(){
+  const ids=selected(); if (ids.length!==1){ toast("Para descartar elegí una sola ficha."); return; }
+  if (act((g,me)=>E.discardTile(g,me,ids[0]))) S.sel=new Set();
+}
+function startGame(){
+  const g=S.game; if (g.seats.some(p=>!p)){ toast("Faltan jugadores. Esperá a que se unan o agregá una IA."); return; }
+  save(E.newRound(E.clone(g)));
+}
+function addBot(i){
+  const g=S.game, seats=g.seats.slice(); seats[i]={bot:true, nick:`IA ${seats.filter(p=>p?.bot).length+1}`};
+  save({...g, seats, level:S.level});
+}
+function nextRound(){ save(E.newRound(E.clone(S.game))); S.activeSeat = S.game.mode==="local" ? null : S.activeSeat; }
+function rematch(){ const g=E.clone(S.game); g.scores=null; g.round=0; g.winner=null; save(E.newRound(g)); }
+function takePhone(){ S.activeSeat = S.game.turn; S.sel=new Set(); render(true); scrollTo(0,0); }
+
+/* ===== Chat (solo online) =====
+   Cada lugar escribe en su propio tema (código-chat0…3): los mensajes nunca se pisan. */
+const QUICK = ["¡Bien ahí!", "Uh, no 😅", "Dale, te toca", "Pensando…", "¡Revancha!", "😂"];
+const Chat = {code:null, msgs:[[],[],[],[]], unsubs:[], open:false};
+const chatRef = i => NetDB.doc(`games/${Chat.code}-chat${i}`);
+function startChat(code){
+  if (Chat.code===code) return;
+  stopChat();
+  if (isLocal(code)) return;
+  Chat.code=code; Chat.msgs=[[],[],[],[]];
+  for (let i=0;i<4;i++) Chat.unsubs.push(chatRef(i).onSnapshot(snap => {
+    const before=Chat.msgs[i].length; Chat.msgs[i]=snap.data()?.msgs||[];
+    if (i!==seat() && Chat.msgs[i].length>before && before && !Chat.open) buzz([40]);
+    updateChat();
+  }));
+}
+function stopChat(){ Chat.unsubs.forEach(u=>u()); Chat.unsubs=[]; Chat.code=null; Chat.open=false; updateChat(); }
+async function sendChat(text){
+  const me=seat(); text=(text||"").trim().slice(0,200);
+  if (!text || me==null || !Chat.code) return;
+  try { await chatRef(me).set({msgs:[...Chat.msgs[me], {text, t:Date.now()}].slice(-40)}); } catch { toast("No se pudo mandar el mensaje."); }
+}
+function updateChat(){
+  const g=S.game, me=seat(), btn=$("#chatbtn"), box=$("#chat");
+  const on = !!(Chat.code && g && g.mode==="online" && me!=null);
+  btn.hidden = !on || Chat.open; box.hidden = !on || !Chat.open;
+  if (!on) return;
+  const seenKey="chatseen:"+Chat.code, seen=LS.get(seenKey)||0;
+  const all = Chat.msgs.flatMap((ms,i)=>ms.map(m=>({...m,by:i}))).sort((a,b)=>a.t-b.t);
+  const unread = all.filter(m=>m.by!==me && m.t>seen).length, badge=$("#chatbadge");
+  badge.hidden=!unread; badge.textContent = unread>9 ? "9+" : unread;
+  if (!Chat.open) return;
+  if (all.length) LS.set(seenKey, all[all.length-1].t);
+  badge.hidden=true;
+  const html = all.map(m=>`<li class="${m.by===me?"mine":""}">${m.by!==me?`<small>${esc(nickOf(m.by))}</small>`:""}<span>${esc(m.text)}</span></li>`).join("") || `<li class="none">Todavía no hay mensajes.</li>`;
+  const log=$("#chatlog"); if (log.innerHTML!==html){ log.innerHTML=html; log.scrollTop=log.scrollHeight; }
+}
+
+/* ===== Pantallas ===== */
+const JOKER = `<svg class="jk" viewBox="12 8 76 72" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"><path d="M42 15 A30 30 0 0 0 42 73"/><path d="M22 44 H43"/><path d="M54 14 V73"/><path d="M61 16 A30 30 0 0 1 70 66"/></g></svg>`;
+const tileHTML = (id, cls="", attrs="", wild=E.isWild(id)) => { if (/\bback\b/.test(cls)) return `<span class="tile ${cls}" aria-hidden="true"></span>`; const t=E.info(id); return `<span class="tile ${cls} ${t.j?"j":"c"+t.c} ${wild?"w":""}" ${attrs}>${t.j?JOKER:`<b class="n">${t.n}</b>`}<i class="dot"></i></span>`; };
+// Fichas de un juego que están haciendo de comodín (un 2 en su lugar de la escalera es una ficha común).
+function wildsIn(m){
+  const T=m.tiles.map(E.info);
+  if (m.t==="p") return new Set(T.every(t=>!t.j&&t.n===2) ? [] : T.filter(t=>t.j||t.n===2).map(t=>t.id));
+  const k=T.findIndex(t=>!t.j&&t.n!==2); if (k<0) return new Set();
+  const v=T[k].n===1&&k>0?14:T[k].n, s0=v-k;
+  const col=T[k].c;
+  return new Set(T.filter((t,i)=>t.j || t.c!==col || !(t.n===s0+i || (t.n===1&&s0+i===14))).map(t=>t.id));
+}
+const tileBtn = (id, cls, attrs) => { const t=E.info(id); return `<button type="button" class="tile ${cls} ${t.j?"j":"c"+t.c} ${E.isWild(id)?"w":""}" ${attrs} aria-label="${E.label(id)}">${t.j?JOKER:`<b class="n">${t.n}</b>`}<i class="dot"></i></button>`; };
+// Orden "a mano": el que armó el jugador arrastrando; las fichas nuevas van al final.
+const orderKey = () => `order:${S.code}:${seat()}`;
+function sortHand(h){
+  if (S.sort==="mano"){ const ord=(LS.get(orderKey())||[]).filter(id=>h.includes(id)); return [...ord, ...h.filter(id=>!ord.includes(id))]; }
+  const key = id => { const t=E.info(id); if (t.j) return 9999; return S.sort==="color" ? t.c*100+t.n : t.n*10+t.c; };
+  return h.slice().sort((a,b)=>key(a)-key(b));
+}
+/* Arrastrar fichas para acomodarlas. Un toque corto selecciona; si el dedo se mueve, la ficha se arrastra. */
+const Drag = {on:false, start:null, el:null, ghost:null, dx:0, dy:0, pending:false, just:0};
+function initDrag(){
+  const hand=$("#hand"); if (!hand) return;
+  hand.onpointerdown = e => {
+    const t=e.target.closest("[data-id]"); if (!t || e.button>0) return;
+    Drag.start={x:e.clientX, y:e.clientY, id:e.pointerId}; Drag.el=t;
+  };
+  hand.onpointermove = e => {
+    if (!Drag.start || e.pointerId!==Drag.start.id) return;
+    if (!Drag.on){
+      if (Math.hypot(e.clientX-Drag.start.x, e.clientY-Drag.start.y) < 8) return;
+      Drag.on=true; const r=Drag.el.getBoundingClientRect();
+      Drag.dx=e.clientX-r.left; Drag.dy=e.clientY-r.top;
+      Drag.ghost=Drag.el.cloneNode(true); Drag.ghost.className+=" ghost"; Drag.ghost.style.width=r.width+"px"; Drag.ghost.style.height=r.height+"px"; Drag.ghost.style.fontSize=getComputedStyle(Drag.el).fontSize; Drag.ghost.style.setProperty("--w", getComputedStyle(Drag.el).getPropertyValue("--w"));
+      document.body.appendChild(Drag.ghost); Drag.el.classList.add("dragging");
+      try { hand.setPointerCapture(e.pointerId); } catch {}
+    }
+    e.preventDefault();
+    Drag.ghost.style.transform=`translate(${e.clientX-Drag.dx}px,${e.clientY-Drag.dy}px)`;
+    // Mover la ficha real en la fila mientras se arrastra, como vista previa.
+    const tiles=[...hand.querySelectorAll("[data-id]")].filter(x=>x!==Drag.el);
+    let best=null, bd=1e9, after=false;
+    for (const x of tiles){ const r=x.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2, d=Math.hypot(e.clientX-cx,(e.clientY-cy)*1.6); if (d<bd){ bd=d; best=x; after=e.clientX>cx; } }
+    if (best) hand.insertBefore(Drag.el, after ? best.nextSibling : best);
+  };
+  const end = e => {
+    if (!Drag.start || e.pointerId!==Drag.start.id) return;
+    const was=Drag.on; Drag.start=null;
+    if (!was) return;
+    Drag.on=false; Drag.ghost?.remove(); Drag.ghost=null; Drag.el.classList.remove("dragging"); Drag.just=Date.now();
+    LS.set(orderKey(), [...hand.querySelectorAll("[data-id]")].map(x=>+x.dataset.id));
+    S.sort="mano"; LS.set("sort","mano");
+    render(true);
+  };
+  hand.onpointerup = end; hand.onpointercancel = end;
+}
+// Safari no compensa el desplazamiento cuando cambia el contenido de arriba: al rearmar la pantalla,
+// el elemento de referencia (tablero o mesa) vuelve a quedar exactamente donde estaba.
+function keepInPlace(sel, fn){
+  const a = document.querySelector(sel), top = a ? a.getBoundingClientRect().top : null;
+  fn();
+  const b = document.querySelector(sel);
+  if (top!=null && b){ const d = b.getBoundingClientRect().top - top; if (Math.abs(d) > 0.5) window.scrollBy(0, d); }
+}
+let screen="";
+function render(force){
+  if (Drag.on){ Drag.pending=true; return; }
+  const app=$("#app"), g=S.game, me=seat();
+  let sc;
+  if (S.status!=="ready") sc="loading";
+  else if (!S.code || !g) sc = S.code ? "loading" : "home";
+  else if (g.phase==="lobby") sc = me==null ? "full" : "lobby";
+  else if (g.mode==="local" && g.phase==="play" && S.activeSeat!==g.turn) sc="handoff";
+  else if (me==null) sc="full";
+  else sc=g.phase;
+  if (sc==="home" && screen==="home" && !force){ updateChat(); return; }
+  const same = screen===sc;
+  screen=sc;
+  document.body.classList.toggle("playing", sc==="play");
+  if (same && sc==="play") keepInPlace(".meldgrid", () => { app.innerHTML=(VIEWS[sc]||VIEWS.loading)(); });
+  else app.innerHTML=(VIEWS[sc]||VIEWS.loading)();
+  const dock=$("#dock");
+  if (sc==="play"){ dock.innerHTML=dockHTML(); dock.hidden=false; document.documentElement.style.setProperty("--dock", dock.offsetHeight+"px"); }
+  else { dock.hidden=true; dock.innerHTML=""; }
+  bind(sc);
+  updateChat();
+}
+const mast = () => `<header class="mast"><h1 class="brand">Burako</h1><span class="tiles">${tileHTML(12,"sm")}${tileHTML(26,"sm")}${tileHTML(104,"sm")}</span></header>`;
+const seg = (id, opts, cur) => `<div class="seg" role="group" aria-labelledby="${id}">${opts.map(([v,t])=>`<button type="button" data-${id}="${v}" aria-pressed="${String(cur)===String(v)}">${t}</button>`).join("")}</div>`;
+
+function scoreHTML(){
+  const g=S.game, me=seat(), myTeam = me==null ? -1 : E.teamOf(g,me), nt=E.nTeams(g);
+  return `<div class="score">${Array.from({length:nt},(_,t)=>`<div class="team ${t===myTeam?"mine":""}"><div class="nm">${esc(teamName(t))}</div><div class="pts">${(g.scores?.[t]||0)}</div><div class="sub">${g.muertoTaken?.[t]?"Muerto tomado":"Muerto sin tomar"}</div></div>`).join("")}</div>`;
+}
+function playersHTML(){
+  const g=S.game, me=seat();
+  return `<div class="players">${g.seats.map((p,i)=>`<span class="pl ${g.turn===i&&g.phase==="play"?"turn":""}">${tileHTML(0,"xs back")}<span>${esc(p.nick)}${i===me&&g.mode!=="local"?" (vos)":""}</span><span class="cnt">${g.hands?.[i]?.length ?? 0}</span></span>`).join("")}</div>`;
+}
+function meldsHTML(team, clickable){
+  const g=S.game, ms=g.melds[team], me=seat(), mine = me!=null && E.teamOf(g,me)===team && g.turn===me && g.phase==="play";
+  if (!ms.length) return `<p class="empty">Todavía no bajó juegos.</p>`;
+  return `<div class="melds">${ms.map((m,i)=>{
+    const can = E.isCanasta(m) ? `<span class="badge ${m.w?"impura":"pura"}">Canasta ${m.w?"impura":"pura"}</span>` : "";
+    const ws = wildsIn(m);
+    const inner = `<span class="ts">${m.tiles.map(id=>tileHTML(id,"sm","",ws.has(id))).join("")}</span>${can}`;
+    const movable = mine && m.w && E.validMeld(m.tiles,m.t,m.p).flex;
+    const mv = movable ? `<button type="button" class="mwild" data-mw="${i}" aria-label="Pasar el comodín a la otra punta">${m.p==="lo"?"Comodín al final ⇢":"⇠ Comodín al principio"}</button>` : "";
+    return clickable ? `<div class="meld ${S.sel.size?"can-add":""}"><button type="button" class="madd" data-mi="${i}" aria-label="Agregar las fichas elegidas a este juego">${inner}</button>${mv}</div>` : `<div class="meld"><span class="madd">${inner}</span>${mv}</div>`;
+  }).join("")}</div>`;
+}
+function statusHTML(){
+  const g=S.game, me=seat(), last=(g.log||[]).slice(-1)[0];
+  const lastTxt = last ? `${esc(nickOf(last.s))} ${esc(last.x)}.` : "";
+  if (g.turn!==me) return `<section class="status"><h2>Turno de ${esc(nickOf(g.turn))}</h2><p class="muted">${lastTxt}</p></section>`;
+  if (g.step==="draw") return `<section class="status me"><h2>Tu turno</h2><p>Robá del pozo o tomá todo el descarte.</p>${last && last.s!==me ? `<p class="muted">${lastTxt}</p>`:""}</section>`;
+  const team=E.teamOf(g,me);
+  const hint = g.muertoTaken[team] ? (E.hasCanasta(g,team) ? "Ya podés cerrar: quedate con una ficha y descartala." : "Para cerrar te falta una canasta (juego de 7).") : "Si te quedás sin fichas, tomás el muerto.";
+  const dr=[...drawnIds()];
+  const got = dr.length===1 ? `<p>Te tocó el <b>${esc(E.label(dr[0]))}</b>: está marcado en verde en tu mano.</p>` : dr.length>1 ? `<p>Tomaste ${dr.length} fichas del descarte: están marcadas en verde en tu mano.</p>` : "";
+  return `<section class="status me"><h2>Bajá, agregá o descartá</h2>${got}<p>Elegí fichas y tocá <b>Bajar juego</b>, o tocá un juego de tu equipo para agregarlas. Terminá descartando una ficha.</p><p class="muted">${hint}</p></section>`;
+}
+function dockHTML(){
+  const g=S.game, me=seat(), hand=g.hands[me]||[], myTurn=g.turn===me, play=myTurn&&g.step==="play";
+  const newIds = drawnIds();
+  S.sel = new Set([...S.sel].filter(id=>hand.includes(id)));
+  return `<div class="top"><span class="label">${g.mode==="local"?esc(nickOf(me))+": tu mano":"Tu mano"} (${hand.length})</span>
+      <span class="sorts" role="group" aria-label="Ordenar la mano">${[["color","Color"],["numero","Número"],["mano","A mano"]].map(([v,t])=>`<button type="button" class="sortbtn" data-sort="${v}" aria-pressed="${S.sort===v}">${t}</button>`).join("")}</span></div>
+    ${S.sort==="mano"?`<p class="draghint">Arrastrá las fichas para acomodarlas a tu gusto.</p>`:""}
+    <div class="hand" id="hand">${sortHand(hand).map(id=>tileBtn(id, newIds.has(id)?"new":"", `data-id="${id}" aria-pressed="${S.sel.has(id)}"`)).join("")}</div>
+    <div class="acts"><button class="btn" id="meldb" type="button"${play&&S.sel.size>=3?"":" disabled"}>Bajar juego</button>
+      <button class="btn" id="discb" type="button"${play&&S.sel.size===1?"":" disabled"}>Descartar</button>
+      <button class="btn ghost" id="clrb" type="button"${S.sel.size?"":" disabled"} style="color:#f3dcc0;box-shadow:inset 0 0 0 2px #a8754a;flex:0 0 auto">✕</button></div>`;
+}
+
+const VIEWS = {
+  loading: () => `${mast()}<p class="muted">Mezclando fichas…</p>`,
+  home: () => `${mast()}
+    <section class="panel">
+      <div class="field"><label class="label" for="nick">Tu nombre</label><input type="text" id="nick" maxlength="16" autocomplete="nickname" placeholder="Ej.: Fran" value="${esc(S.nick)}"></div>
+      <div class="field"><label class="label" for="join">¿Te pasaron un código?</label>
+        <div class="ask"><input type="text" id="join" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD" value="${esc(S.joinCode)}" style="text-transform:uppercase;letter-spacing:.2em;font-family:var(--f-display)"><button class="btn" id="joinb" type="button">Unirme</button></div>
+        <p class="err" id="joinErr">${esc(S.joinErr)}</p></div>
+      <div class="or"><span>o creá una partida online</span></div>
+      <div class="field"><span class="label" id="non">Jugadores</span>${seg("non", [[2,"2"],[3,"3"],[4,"4 (parejas)"]], S.nOnline)}</div>
+      <button class="btn" id="create" type="button">Crear partida online</button>
+      <p id="netst" class="netst" aria-live="polite"></p>
+    </section>
+    <section class="panel">
+      <span class="label">Contra la IA</span>
+      <div class="field"><span class="label" id="nai">Jugadores</span>${seg("nai", [[2,"2"],[3,"3"],[4,"4 (parejas)"]], S.nAI)}</div>
+      <div class="field"><span class="label" id="lvl">Nivel</span>${seg("lvl", [["facil","Fácil"],["medio","Medio"],["dificil","Difícil"]], S.level)}</div>
+      <button class="btn" id="aib" type="button">Jugar contra la IA</button>
+      <p class="muted" style="font-size:.9rem">Un solo celular, no necesita internet.</p>
+    </section>
+    <section class="panel">
+      <span class="label">En el mismo celular</span>
+      <div class="field"><span class="label" id="nlp">Jugadores</span>${seg("nlp", [[2,"2"],[3,"3"],[4,"4 (parejas)"]], S.nLocal)}</div>
+      <div class="row">${Array.from({length:S.nLocal},(_,i)=>`<div class="field"><label class="label" for="lp${i}">Jugador ${i+1}${S.nLocal===4?` · Pareja ${i%2+1}`:""}</label><input type="text" id="lp${i}" maxlength="16" autocomplete="off" placeholder="Nombre" value="${esc(S.names[i]||"")}"></div>`).join("")}</div>
+      <button class="btn" id="lpb" type="button">Jugar en este celular</button>
+      <p class="muted" style="font-size:.9rem">Se pasan el celular en cada turno; la pantalla se tapa para que nadie vea las fichas del otro.</p>
+    </section>
+    <section class="panel"><div class="field"><span class="label" id="tgt">Partida a</span>${seg("tgt", [[1500,"1500"],[2000,"2000"],[3000,"3000"]], S.target)}</div></section>
+    <details class="panel rules"><summary>Reglas</summary><ul>
+      <li>106 fichas: del 1 al 13 en cuatro colores (dos de cada una) y 2 comodines. Cada jugador recibe 11 y cada equipo tiene un muerto de 11.</li>
+      <li>En tu turno robás una ficha del pozo o tomás todo el descarte. Después podés bajar juegos y agregar fichas a los juegos de tu equipo. Terminás descartando una ficha.</li>
+      <li>Juegos de 3 o más: escalera del mismo color (el 1 va antes del 2 o después del 13) o pierna del mismo número. Cada juego admite un solo comodín: el comodín o un 2. Un 2 en su lugar (2-3-4…) cuenta como ficha común, no como comodín.</li>
+      <li>En tu turno podés pasar el comodín (o el 2 que hace de comodín) al principio o al final de un juego, en escaleras y piernas.</li>
+      <li>Canasta: juego de 7 o más. Pura (sin comodín) vale 200; impura (con comodín), 100.</li>
+      <li>Cuando te quedás sin fichas por primera vez, tomás el muerto de tu equipo. Para cerrar hace falta haber tomado el muerto y tener una canasta; se cierra descartando la última ficha (+100).</li>
+      <li>Puntos de las fichas: 3 al 7 valen 5; 8 al 13, 10; el 1, 15; el 2, 20; el comodín, 50. Se suman las bajadas y se restan las que quedan en la mano. El muerto sin tomar resta 100.</li>
+      <li>Con 4 jugadores se juega en parejas: 1 y 3 contra 2 y 4, y la pareja comparte juegos y muerto.</li></ul></details>`,
+  full: () => `${mast()}<section class="panel"><h2>Esa partida ya está completa</h2><button class="btn" id="leave" type="button">Volver</button></section>`,
+  lobby: () => {
+    const g=S.game, host=isHost();
+    return `${mast()}<section class="panel center"><span class="label">Código de la partida</span><div class="code" id="code">${esc(S.code)}</div>
+      <p>Pasales este código: abren Burako en su celular, escriben el código y tocan <b>Unirme</b>.</p>
+      <button class="btn ghost small" id="copy" type="button">Copiar código</button></section>
+      <section class="panel"><span class="label">Jugadores (${g.seats.filter(Boolean).length} de ${g.n})${g.n===4?" · parejas: 1 y 3 contra 2 y 4":""}</span>
+      <ul class="seats">${g.seats.map((p,i)=>`<li><span class="label">${i+1}</span><span class="n">${p?esc(p.nick)+(p.bot?" 🤖":""):'<span class="muted">Esperando…</span>'}</span>${!p&&host?`<button class="btn ghost small" type="button" data-bot="${i}">Agregar IA</button>`:""}</li>`).join("")}</ul>
+      ${host ? `<div class="field"><span class="label" id="lvl">Nivel de las IA</span>${seg("lvl", [["facil","Fácil"],["medio","Medio"],["dificil","Difícil"]], S.level)}</div>
+        <button class="btn" id="start" type="button"${g.seats.every(Boolean)?"":" disabled"}>Empezar</button>` : `<p class="muted">Esperando que ${esc(nickOf(0))} empiece la partida…</p>`}
+      </section><button class="btn ghost small" id="leave" type="button">Salir</button>`;
+  },
+  handoff: () => {
+    const g=S.game, n=esc(nickOf(g.turn)), last=(g.log||[]).slice(-1)[0];
+    return `${scoreHTML()}<section class="panel cover"><span class="label">Pasale el celular a</span><div class="who">${n}</div>
+      ${last?`<p class="muted">${esc(nickOf(last.s))} ${esc(last.x)}.</p>`:""}
+      <button class="btn" id="take" type="button">Soy ${n}, mostrar mis fichas</button>
+      <p class="muted" style="font-size:.9rem">No mires las fichas de los demás.</p></section>
+      <button class="btn ghost small" id="leave" type="button">Salir de la partida</button>`;
+  },
+  play: () => {
+    const g=S.game, me=seat(), myTeam=E.teamOf(g,me), top=g.discard[g.discard.length-1], myDraw=g.turn===me&&g.step==="draw";
+    const others = Array.from({length:E.nTeams(g)},(_,t)=>t).filter(t=>t!==myTeam);
+    return `${scoreHTML()}${playersHTML()}
+      <div class="table">
+        <div class="pile">${tileHTML(0,"back")}<div class="txt"><span class="label">Pozo · ${g.stock.length}</span>${myDraw?`<button class="btn" id="drawb" type="button">Robar</button>`:""}</div></div>
+        <div class="pile">${top!=null?tileHTML(top):`<span class="tile" style="opacity:.25"></span>`}<div class="txt"><span class="label">Descarte · ${g.discard.length}</span>${myDraw&&top!=null?`<button class="btn" id="takeb" type="button">Tomar${g.discard.length>1?" ("+g.discard.length+")":""}</button>`:""}</div></div>
+      </div>
+      ${g.discard.length ? `<section class="dpile" aria-label="Todas las fichas del descarte"><span class="label">Descarte completo · ${g.discard.length} ${g.discard.length===1?"ficha":"fichas"}${myDraw?" · si lo tomás, te llevás todas":""}</span>
+        <div class="dts">${g.discard.map((id,k)=>tileHTML(id, "sm"+(k===g.discard.length-1?" top":""))).join("")}</div></section>` : ""}
+      ${statusHTML()}
+      <div class="meldgrid"><section class="panel"><span class="label">${g.n===4?"Juegos de tu pareja":"Tus juegos"}</span>${meldsHTML(myTeam, g.turn===me&&g.step==="play")}</section>
+      ${others.map(t=>`<section class="panel"><span class="label">Juegos de ${esc(teamName(t))}</span>${meldsHTML(t,false)}</section>`).join("")}</div>
+      <details class="panel log"><summary>Últimas jugadas</summary><ol>${(g.log||[]).slice().reverse().map(l=>`<li><b>${esc(nickOf(l.s))}</b> ${esc(l.x)}</li>`).join("")}</ol></details>
+      <button class="btn ghost small" id="leave" type="button">Salir de la partida</button>`;
+  },
+  roundEnd: () => resultHTML(false),
+  over: () => resultHTML(true),
+};
+function resultHTML(over){
+  const g=S.game, r=g.result||[], nt=E.nTeams(g), canNext = g.mode!=="online" || isHost();
+  const row = (label, f) => `<tr><td>${label}</td>${r.map(x=>`<td>${f(x)}</td>`).join("")}</tr>`;
+  const how = g.closedBy!=null ? `${esc(nickOf(g.closedBy))} cerró la mano.` : "Se terminó el pozo.";
+  const title = over ? `¡Ganó ${esc(teamName(g.winner))}!` : `Fin de la mano ${g.round}`;
+  return `${scoreHTML()}<section class="panel"><h2 class="verdict">${title}</h2><p class="center muted">${how}</p>
+    <div style="overflow-x:auto"><table class="res"><thead><tr><th></th>${Array.from({length:nt},(_,t)=>`<th>${esc(teamName(t))}</th>`).join("")}</tr></thead><tbody>
+    ${row("Fichas bajadas", x=>x.meldPts)}${row("Canastas puras", x=>x.limpias?`${x.limpias} × 200`:"—")}${row("Canastas impuras", x=>x.sucias?`${x.sucias} × 100`:"—")}
+    ${row("Cierre", x=>x.cierre?"+100":"—")}${row("Fichas en la mano", x=>x.hand?"−"+x.hand:"—")}${row("Muerto sin tomar", x=>x.muerto?"−100":"—")}
+    <tr class="tot"><td>Esta mano</td>${r.map(x=>`<td>${x.total}</td>`).join("")}</tr><tr class="tot"><td>Total</td>${(g.scores||[]).map(s=>`<td>${s}</td>`).join("")}</tr>
+    </tbody></table></div>
+    ${canNext ? `<button class="btn" id="${over?"again":"next"}" type="button">${over?"Revancha":"Siguiente mano"}</button>` : `<p class="muted center">Esperando que ${esc(nickOf(0))} reparta la próxima mano…</p>`}
+    </section><button class="btn ghost small" id="leave" type="button">Salir</button>`;
+}
+
+function bind(sc){
+  const on = (sel, fn) => { const el=$(sel); if (el) el.onclick=fn; };
+  on("#leave", leave);
+  // Primero marca el botón y después aplica el cambio, que puede rearmar la pantalla (como el de jugadores en el mismo celular).
+  const segs = (key, fn) => document.querySelectorAll(`[data-${key}]`).forEach(b=>b.onclick=()=>{ document.querySelectorAll(`[data-${key}]`).forEach(x=>x.setAttribute("aria-pressed", x===b)); fn(b.dataset[key]); });
+  if (sc==="home"){
+    on("#create", ()=>busy("create","Creando partida…",createOnline));
+    const j=$("#join"); on("#joinb", ()=>busy("joinb","Buscando…",()=>joinGame(j.value)));
+    j.onkeydown=e=>{ if (e.key==="Enter") busy("joinb","Buscando…",()=>joinGame(j.value)); };
+    on("#aib", createAI); on("#lpb", createLocal);
+    segs("non", v=>S.nOnline=+v); segs("nai", v=>S.nAI=+v); segs("lvl", v=>{ S.level=v; LS.set("level",v); });
+    segs("tgt", v=>{ S.target=+v; LS.set("target",+v); });
+    segs("nlp", v=>{ for (let i=0;i<S.nLocal;i++){ const el=$("#lp"+i); if (el) S.names[i]=el.value; } S.nLocal=+v; render(true); });
+    setNet(S.net || "connecting");
+  }
+  if (sc==="lobby"){
+    on("#copy", async()=>{ try { await navigator.clipboard.writeText(S.code); toast("Código copiado."); } catch { toast("Copiá el código a mano: "+S.code); } });
+    document.querySelectorAll("[data-bot]").forEach(b=>b.onclick=()=>addBot(+b.dataset.bot));
+    segs("lvl", v=>{ S.level=v; LS.set("level",v); }); on("#start", startGame);
+  }
+  if (sc==="handoff") on("#take", takePhone);
+  if (sc==="play"){
+    on("#drawb", ()=>doDraw("stock")); on("#takeb", ()=>doDraw("discard"));
+    document.querySelectorAll("[data-mi]").forEach(b=>b.onclick=()=>doAdd(+b.dataset.mi));
+    document.querySelectorAll("[data-mw]").forEach(b=>b.onclick=()=>act((g,me)=>E.moveWild(g,me,+b.dataset.mw)));
+    $("#hand").onclick=e=>{ if (Date.now()-Drag.just<300) return; const t=e.target.closest("[data-id]"); if (!t) return; const id=+t.dataset.id; S.sel.has(id)?S.sel.delete(id):S.sel.add(id); refreshSel(); };
+    document.querySelectorAll("[data-sort]").forEach(b=>b.onclick=()=>{
+      // Al pasar a "A mano" se parte del orden que se está viendo.
+      if (b.dataset.sort==="mano" && S.sort!=="mano" && !LS.get(orderKey())) LS.set(orderKey(), [...document.querySelectorAll("#hand [data-id]")].map(x=>+x.dataset.id));
+      S.sort=b.dataset.sort; LS.set("sort",S.sort); render(true); });
+    initDrag();
+    on("#meldb", doMeld); on("#discb", doDiscard); on("#clrb", ()=>{ S.sel=new Set(); refreshSel(); });
+  }
+  if (sc==="roundEnd") on("#next", nextRound);
+  if (sc==="over") on("#again", rematch);
+}
+// Cambiar la selección no rearma la pantalla: solo actualiza fichas y botones.
+function refreshSel(){
+  const g=S.game, me=seat(), play=g.turn===me&&g.step==="play";
+  document.querySelectorAll("#hand [data-id]").forEach(b=>b.setAttribute("aria-pressed", S.sel.has(+b.dataset.id)));
+  $("#meldb").disabled = !(play && S.sel.size>=3); $("#discb").disabled = !(play && S.sel.size===1); $("#clrb").disabled = !S.sel.size;
+  document.querySelectorAll("[data-mi]").forEach(b=>b.parentElement.classList.toggle("can-add", S.sel.size>0));
+}
+
+/* ===== Arranque ===== */
+$("#chatbtn").onclick=()=>{ Chat.open=true; updateChat(); $("#chatin").focus(); };
+$("#chatclose").onclick=()=>{ Chat.open=false; updateChat(); };
+$("#chatform").onsubmit=e=>{ e.preventDefault(); const i=$("#chatin"); sendChat(i.value); i.value=""; i.focus(); };
+document.querySelector("#chat .quick").innerHTML = QUICK.map(q=>`<button type="button" class="chip" data-quick="${esc(q)}">${esc(q)}</button>`).join("");
+document.querySelectorAll("[data-quick]").forEach(b=>b.onclick=()=>sendChat(b.dataset.quick));
+render();
+boot();
+async function boot(){
+  let uid = LS.get("uid"); if (!uid){ uid="u"+rid()+rid(); LS.set("uid",uid); }
+  S.db = NetDB; S.uid = uid;
+  const code = LS.get("code");
+  if (isLocal(code)){
+    S.status="ready";
+    const g=(await S.db.doc("games/"+code).get()).data();
+    if (g){ await enter(code); Net.connect().then(()=>setNet("ok")).catch(()=>setNet("fail")); return; }
+    LS.set("code", null);
+  }
+  S.status="ready"; render(true);
+  setNet("connecting");
+  try { await Net.connect(); setNet("ok"); } catch { setNet("fail"); }
+  if (code && !isLocal(code) && S.netOk && !S.code){
+    const snap=await S.db.doc("games/"+code).get().catch(()=>null), g=snap?.exists?snap.data():null;
+    if (g && g.seats.some(p=>p && !p.bot && p.uid===uid)){ await enter(code); return; }
+    LS.set("code", null);
+  }
+}
+if ("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>

@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Batalla Naval</title>
+<meta name="description" content="Batalla Naval para jugar de a dos, cada uno en su celular, contra la IA o pasando el celular.">
+<meta name="theme-color" content="#071a2c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Batalla Naval">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+/* Pantalla fija: sin zoom por doble toque ni por pellizco */
+html,body{touch-action:pan-x pan-y}
+button,a,input,[role=button]{touch-action:manipulation}
+input,textarea{font-size:max(16px,1em)}
+[hidden]{display:none!important}
+/* Layout: one-column phone app; a navy chart table with two sea grids (enemy on top, yours below), steel-grey ships, flare-orange hits and white splashes. Single committed dark look. */
+:root{
+  --night:#071a2c; --deck:#0e2a44; --deck-2:#163a5c; --line:#2a5578;
+  --sea:#0f4c6e; --sea-2:#0b3c58; --grid:#2c7398;
+  --steel:#9aa9b6; --steel-2:#6e7f8d; --flare:#ff7a2f; --flare-2:#c4471a; --foam:#e8f3fa;
+  --brass:#f0b84a; --brass-ink:#2a1a02; --ok:#58c08a; --bad:#ff6b5a;
+  --fg:#eaf2f8; --muted:#94b0c6;
+  --f-display:"Saira Stencil One","Impact","Arial Black",sans-serif;
+  --f-head:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"Barlow",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--night);background-image:radial-gradient(110% 60% at 50% -10%,#123b5e 0%,transparent 60%);background-attachment:fixed;color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.45}
+#app{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 80px;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{margin:0;text-wrap:balance}
+p{margin:0}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn{background:var(--brass);color:var(--brass-ink);font-family:var(--f-head);font-weight:700;font-size:1.15rem;letter-spacing:.06em;text-transform:uppercase;padding:13px 18px;min-height:50px;box-shadow:0 3px 0 #a57a22}
+.btn:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #a57a22}
+.btn.ghost{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 2px var(--line)}
+.btn.small{font-size:.95rem;min-height:40px;padding:8px 12px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1 1 140px}
+input[type=text]{width:100%;font:inherit;font-size:1.05rem;padding:12px 14px;border-radius:10px;border:2px solid var(--line);background:#061524;color:var(--fg)}
+input[type=text]::placeholder{color:#5f7d95}
+.label{font-family:var(--f-head);font-weight:600;font-size:.85rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.center{text-align:center}
+
+.mast{display:flex;flex-direction:column;gap:2px;padding-top:6px}
+.brand{font-family:var(--f-display);font-weight:400;font-size:clamp(2.3rem,11vw,3.4rem);line-height:.95;color:var(--foam);letter-spacing:.02em}
+.brand span{color:var(--flare)}
+.mast .label{color:var(--grid)}
+
+.panel{background:var(--deck);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 0 0 1px var(--line)}
+.field{display:flex;flex-direction:column;gap:6px}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;background:#061524;color:var(--fg);font-family:var(--f-head);font-weight:700;font-size:1.05rem;padding:10px 0;box-shadow:inset 0 0 0 2px var(--line)}
+.seg button[aria-pressed=true]{background:var(--foam);color:var(--night);box-shadow:none}
+.ask{display:flex;gap:8px}.ask input{flex:1;min-width:0}.ask .btn{flex:0 0 auto}
+.err{color:var(--bad);font-weight:600}
+.netst{font-size:.9rem;font-weight:600;color:var(--muted)}
+.netst.ok{color:var(--ok)}.netst.fail{color:var(--bad)}
+.linkbtn{background:none;color:var(--fg);text-decoration:underline;font-weight:700;padding:0 4px}
+.code{font-family:var(--f-display);font-size:clamp(3rem,16vw,4.4rem);letter-spacing:.16em;line-height:1;color:var(--foam);text-align:center;padding:8px 0;border-block:2px dashed var(--line)}
+
+/* Marcador */
+.score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:var(--deck);border-radius:14px;padding:10px 14px;box-shadow:inset 0 0 0 1px var(--line)}
+.score .p{display:flex;flex-direction:column;gap:2px;min-width:0}
+.score .p.r{align-items:flex-end;text-align:right}
+.score .nick{font-family:var(--f-head);font-weight:700;font-size:1.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.score .p.turn .nick{color:var(--brass)}
+.score .wins{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.score .mid{text-align:center;font-family:var(--f-head);font-weight:600;color:var(--muted);letter-spacing:.1em;font-size:.8rem;text-transform:uppercase}
+
+.status{border-radius:14px;padding:12px 14px;background:var(--deck-2);display:flex;flex-direction:column;gap:6px;min-height:7.6rem;justify-content:center}
+.status.me{box-shadow:inset 0 0 0 2px var(--brass)}
+.status.hit{box-shadow:inset 0 0 0 2px var(--flare)}
+.status h2{font-family:var(--f-head);font-weight:700;font-size:1.35rem}
+.status .big{font-family:var(--f-display);font-size:1.8rem;line-height:1.1}
+.big.agua{color:var(--foam)}.big.tocado{color:var(--flare)}.big.hundido{color:var(--bad)}
+
+/* Tableros */
+.boardwrap{display:flex;flex-direction:column;gap:6px}
+.boardhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.board{display:grid;grid-template-columns:auto repeat(10,minmax(0,1fr));gap:2px;background:var(--sea-2);padding:6px;border-radius:10px;box-shadow:inset 0 0 0 1px var(--grid);width:100%}
+.board.small{max-width:300px;align-self:center}
+.board .lab{font-family:var(--f-head);font-weight:600;font-size:.72rem;color:var(--muted);display:grid;place-items:center;min-width:14px}
+.board.small .lab{font-size:.6rem;min-width:10px}
+.cell{aspect-ratio:1;background:var(--sea);border-radius:3px;padding:0;position:relative;display:grid;place-items:center;min-width:0}
+.cell::after{content:"";position:absolute}
+.board.target .cell:not(.shot){cursor:pointer}
+.board.target.live .cell:not(.shot){background:#13597f;box-shadow:inset 0 0 0 1px #2c7398}
+.board.target.live .cell:not(.shot):active{background:var(--brass)}
+/* El barco se dibuja encima del agua y cubre el espacio entre casillas para verse de una pieza */
+.cell .hull{position:absolute;inset:0 -1.5px;pointer-events:none;z-index:1}
+.cell .hull.v{inset:-1.5px 0}
+.cell .hull svg{width:100%;height:100%;display:block}
+.cell .hull.v svg{transform:rotate(90deg);transform-origin:center;width:100%;height:100%}
+.cell::after,.cell::before{z-index:2}
+.cell.miss::after{width:30%;height:30%;border-radius:50%;background:var(--foam);opacity:.85}
+.cell.hit{background:var(--flare-2)}
+.cell.ship.hit{background:var(--sea)}
+.cell.hit::after{width:60%;height:60%;background:radial-gradient(circle,#ffd27a 0%,var(--flare) 45%,transparent 72%)}
+.cell.sunk{background:#0a3047;box-shadow:inset 0 0 0 1px #1d4f6d}
+.cell.sunk::after{width:70%;height:2px;background:var(--bad);transform:rotate(45deg);box-shadow:0 0 0 0 transparent}
+.cell.sunk::before{content:"";position:absolute;width:70%;height:2px;background:var(--bad);transform:rotate(-45deg)}
+.cell.reveal{background:var(--sea)}
+.cell.reveal .hull{opacity:.75}
+.cell.sunk .hull{filter:brightness(.6) saturate(.5)}
+.cell.last{animation:ping 1s ease-out 2}
+.cell.preview{background:#1c7a5a}.cell.preview.bad{background:#7a2b2b}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(255,210,122,.9)}100%{box-shadow:0 0 0 8px rgba(255,210,122,0)}}
+@media (prefers-reduced-motion:reduce){.cell.last{animation:none}}
+
+/* Flota */
+.fleet{display:flex;flex-wrap:wrap;gap:6px}
+.ship-chip{display:flex;align-items:center;gap:8px;background:#061524;color:var(--fg);padding:7px 10px;border-radius:10px;box-shadow:inset 0 0 0 2px var(--line);font-size:.92rem;text-align:left}
+.ship-chip i{display:flex;gap:2px}
+.ship-chip i b{width:9px;height:9px;border-radius:2px;background:var(--steel)}
+.ship-chip[aria-pressed=true]{box-shadow:inset 0 0 0 2px var(--brass);background:#1d2a14}
+.ship-chip.done{opacity:.55}
+.ship-chip.sunk{opacity:.55;text-decoration:line-through}
+.ship-chip.sunk i b{background:var(--bad)}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.tools .btn{flex:1 1 auto}
+
+.hist ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto}
+.hist li{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:.92rem;padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.04);font-variant-numeric:tabular-nums}
+.hist li.mine{background:rgba(240,184,74,.1)}
+.hist .who{font-family:var(--f-head);font-weight:700;letter-spacing:.04em;color:var(--muted);font-size:.82rem;text-transform:uppercase}
+.hist li.mine .who{color:var(--brass)}
+.pill{font-family:var(--f-head);font-weight:700;font-size:.82rem;padding:2px 9px;border-radius:999px;background:var(--line)}
+.pill.tocado{background:var(--flare);color:#2b0e00}.pill.hundido{background:var(--bad);color:#2b0505}
+
+.verdict{font-family:var(--f-display);font-size:clamp(2rem,9vw,2.8rem);line-height:1.05;text-align:center}
+.verdict.win{color:var(--brass)}.verdict.lose{color:var(--bad)}
+.cover{min-height:60vh;display:flex;flex-direction:column;justify-content:center;gap:14px;text-align:center}
+.cover .who{font-family:var(--f-display);font-size:clamp(2.4rem,12vw,3.4rem);color:var(--brass)}
+/* Pantallas anchas o celular acostado: los dos mares lado a lado, sin pasar el alto de la pantalla */
+.board{max-width:min(100%,calc(100dvh - 70px));margin-inline:auto}
+@media (min-width:760px){
+  #app{max-width:1040px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .board.small{max-width:min(100%,calc(100dvh - 70px))}
+}
+/* Chat */
+.chatbtn{position:fixed;z-index:22;right:max(16px,calc(env(safe-area-inset-right,0px) + 12px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--brass);color:var(--brass-ink);font-family:var(--f-head);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:11px 16px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.chatbtn .cbadge{position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--bad);color:#2b0505;font-size:.8rem;display:grid;place-items:center;letter-spacing:0}
+.chat{position:fixed;z-index:30;left:0;right:0;bottom:0;max-height:70vh;display:flex;flex-direction:column;gap:10px;background:var(--deck-2);box-shadow:0 -10px 30px rgba(0,0,0,.5);border-radius:18px 18px 0 0;padding:14px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.chat{max-width:680px;margin-inline:auto}
+.chat>*{width:100%;min-width:0}
+.chat .ask input{min-width:0}
+.chathead{display:flex;align-items:baseline;gap:10px}.chathead b{font-family:var(--f-head);font-size:1.3rem}.chathead .linkbtn{margin-left:auto}
+.chatlog{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-height:120px;flex:1}
+.chatlog li{display:flex}.chatlog li span{max-width:80%;padding:8px 12px;border-radius:14px 14px 14px 4px;background:var(--line);overflow-wrap:anywhere}
+.chatlog li.mine{justify-content:flex-end}.chatlog li.mine span{background:var(--brass);color:var(--brass-ink);border-radius:14px 14px 4px 14px}
+.chatlog li.none{color:var(--muted);font-size:.92rem}
+.quick{display:flex;flex-wrap:wrap;gap:6px}
+.chip{flex:0 0 auto;background:var(--line);color:var(--fg);font-size:.9rem;padding:7px 11px;border-radius:999px}
+@media (max-height:520px) and (orientation:landscape){.chat{max-height:85vh}}
+@media (min-width:700px){.chat{border-radius:18px 18px 0 0;bottom:0}}
+/* Tocar el tablero no desplaza ni hace rebotar la página (en iPhone un toque con un leve deslizamiento movía todo) */
+html,body{overscroll-behavior:none}
+.board,.board *{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:#030d17;color:var(--fg);box-shadow:0 0 0 2px var(--brass);padding:12px 16px;border-radius:12px;max-width:min(520px,calc(100vw - 32px));font-size:.95rem}
+.foot{font-size:.9rem;color:var(--muted);text-align:center}
+.foot a{color:var(--fg)}
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<button id="chatbtn" class="chatbtn" type="button" aria-label="Abrir el chat" hidden>Chat<span id="chatbadge" class="cbadge" hidden></span></button>
+<section id="chat" class="chat" role="dialog" aria-label="Chat de la partida" hidden>
+  <div class="chathead"><b>Chat</b><span id="chatwith" class="label"></span><button type="button" class="linkbtn" id="chatclose">Cerrar</button></div>
+  <ol id="chatlog" class="chatlog"></ol>
+  <div class="quick"></div>
+  <form id="chatform" class="ask" autocomplete="off"><input type="text" id="chatin" maxlength="200" placeholder="Escribí un mensaje" enterkeyhint="send"><button class="btn small" type="submit">Enviar</button></form>
+</section>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="mqtt.min.js"></script>
+<script>
+// Safari ignora user-scalable=no: el pellizco se bloquea a mano.
+["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+</script>
+<script>
+/* ===== Juego ===== */
+const N = 10, ROWS = "ABCDEFGHIJ";
+// Flota internacional
+const FLEET = [
+  {id:"portaaviones", name:"Portaaviones", len:5},
+  {id:"acorazado", name:"Acorazado", len:4},
+  {id:"crucero", name:"Crucero", len:3},
+  {id:"submarino", name:"Submarino", len:3},
+  {id:"destructor", name:"Destructor", len:2},
+];
+const SHIP = Object.fromEntries(FLEET.map(s=>[s.id,s]));
+const K = (x,y) => x+","+y;
+const coord = (x,y) => ROWS[y]+"-"+(x+1);
+
+/* ===== Utilidades ===== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const other = s => s==="A" ? "B" : "A";
+const rid = () => Math.random().toString(36).slice(2,10);
+const pickOne = a => a[Math.floor(Math.random()*a.length)];
+const LS = {
+  get(k){ try { return JSON.parse(localStorage.getItem("naval:"+k)); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem("naval:"+k, JSON.stringify(v)); } catch {} },
+};
+let toastT;
+function toast(msg, ms=3500){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true, ms); }
+function buzz(p=[60,40,60]){ try { navigator.vibrate && navigator.vibrate(p); } catch {} }
+
+/* ===== Red =====
+   Las partidas viajan por un servidor MQTT público (sin cuentas). Cada partida es un tema con el
+   último estado retenido. La flota de cada uno nunca sale de su teléfono: cada celular responde los disparos que recibe. */
+const qs = new URLSearchParams(location.search);
+const BROKERS = qs.get("broker") ? [qs.get("broker")] : [
+  "wss://broker.hivemq.com:8884/mqtt",
+  "wss://broker.emqx.io:8084/mqtt",
+  "wss://test.mosquitto.org:8081/mqtt",
+  "wss://mqtt.eclipseprojects.io:443/mqtt",
+];
+const TOPIC = code => "fd-batalla-naval/v1/" + code;
+const isObj = v => v && typeof v==="object" && !Array.isArray(v);
+function merge(base, patch){
+  const out = isObj(base) ? {...base} : {};
+  for (const k in patch) out[k] = isObj(patch[k]) && isObj(out[k]) ? merge(out[k], patch[k]) : patch[k];
+  return out;
+}
+const Net = {
+  client:null, games:{}, waiters:{}, subs:new Set(),
+  tryBroker(url){
+    return new Promise((res, rej) => {
+      const c = mqtt.connect(url, {clientId:"bn_"+rid()+rid(), clean:true, keepalive:30, reconnectPeriod:0, connectTimeout:7000});
+      const fail = () => { clearTimeout(t); try { c.end(true); } catch {} rej(); };
+      const t = setTimeout(fail, 8000);
+      c.once("connect", () => { clearTimeout(t); res(c); });
+      c.once("error", fail);
+    });
+  },
+  connect(){ return this._p || (this._p = this._connect().finally(() => { this._p = null; })); },
+  async _connect(){
+    if (this.client?.connected) return;
+    if (this.client){ try { this.client.end(true); } catch {} this.client=null; }
+    for (const url of BROKERS){
+      try { this.client = await this.tryBroker(url); break; } catch {}
+    }
+    if (!this.client) throw new Error("net");
+    const c = this.client;
+    c.options.reconnectPeriod = 2000;
+    let wasOff = false;
+    c.on("offline", () => { setNet("connecting"); if (!wasOff){ wasOff=true; toast("Sin internet. Reconectando…", 4000); } });
+    c.on("connect", () => { setNet("ok"); if (wasOff){ wasOff=false; toast("Conectado de nuevo."); } for (const tp of this.subs) c.subscribe(tp, {qos:1}); });
+    c.on("message", (topic, buf) => {
+      const code = topic.split("/").pop();
+      let data = null;
+      if (buf.length) { try { data = JSON.parse(buf.toString()); } catch { return; } }
+      const g = this.games[code] || (this.games[code] = {data:null, seen:false, fns:new Set()});
+      if (data && g.data && (data.rev||0) < (g.data.rev||0)) return;
+      g.data = data; g.seen = true;
+      (this.waiters[code]||[]).forEach(f=>f()); delete this.waiters[code];
+      g.fns.forEach(fn => fn());
+    });
+  },
+  acks:{},
+  sub(code){
+    const tp = TOPIC(code);
+    if (!this.subs.has(tp)){
+      this.subs.add(tp);
+      this.acks[tp] = new Promise(r => this.client.subscribe(tp, {qos:1}, () => r()));
+    }
+    return this.games[code] || (this.games[code] = {data:null, seen:false, fns:new Set()});
+  },
+  publish(code, data){
+    const g = this.sub(code); g.data = data; g.seen = true;
+    g.fns.forEach(fn => fn());
+    return new Promise((res, rej) => this.client.publish(TOPIC(code), JSON.stringify(data), {qos:1, retain:true}, e => e ? rej({code:"unavailable"}) : res()));
+  },
+};
+const snapOf = d => ({exists:!!d, data:()=>d});
+function gameRef(code){
+  return {
+    get(){
+      const g = Net.sub(code);
+      if (g.seen) return Promise.resolve(snapOf(g.data));
+      // Un tema sin mensaje retenido no responde. El servidor manda el mensaje retenido apenas confirma
+      // la suscripción, así que si poco después no llegó nada, la partida no existe.
+      return new Promise(res => {
+        let over = false;
+        const fin = () => { if (over) return; over = true; res(snapOf(Net.games[code].data)); };
+        (Net.waiters[code] ||= []).push(fin);
+        Net.acks[TOPIC(code)].then(() => setTimeout(fin, 900));
+        setTimeout(fin, 6000);
+      });
+    },
+    set(data){ return Net.publish(code, {...data, rev:((Net.games[code]?.data?.rev)||0)+1}); },
+    update(patch){
+      const cur = Net.games[code]?.data;
+      if (!cur) return Promise.reject({code:"invalid_argument"});
+      return Net.publish(code, {...merge(cur, patch), rev:(cur.rev||0)+1});
+    },
+    onSnapshot(next){
+      const g = Net.sub(code), fn = () => next(snapOf(g.data));
+      g.fns.add(fn); if (g.seen) setTimeout(fn, 0);
+      return () => g.fns.delete(fn);
+    },
+  };
+}
+function localRef(path){
+  const k = "doc:" + path;
+  return {
+    get: async () => { const d = LS.get(k); return snapOf(d); },
+    set: async d => LS.set(k, d),
+  };
+}
+// Partidas contra la IA y de "pasar el celular": viven solo en este teléfono, sin internet.
+const Local = {};
+function localGameRef(path){
+  const k = "doc:" + path;
+  const st = Local[path] || (Local[path] = {data:LS.get(k), fns:new Set()});
+  const pub = d => { st.data = d; LS.set(k, d); setTimeout(() => st.fns.forEach(f=>f()), 0); return Promise.resolve(); };
+  return {
+    get: async () => snapOf(st.data),
+    set: d => pub({...d, rev:(st.data?.rev||0)+1}),
+    update: p => st.data ? pub({...merge(st.data, p), rev:(st.data.rev||0)+1}) : Promise.reject({code:"invalid_argument"}),
+    onSnapshot(next){ const fn = () => next(snapOf(st.data)); st.fns.add(fn); if (st.data) setTimeout(fn, 0); return () => st.fns.delete(fn); },
+    peek: () => st.data,
+  };
+}
+const isLocal = code => /^(IA|LP)/.test(code||"");
+const NetDB = { doc: p => /^games\/(IA|LP)/.test(p) ? localGameRef(p) : p.startsWith("games/") ? gameRef(p.slice(6)) : localRef(p) };
+
+/* ===== Flota ===== */
+function shipCells(x, y, len, h){ return Array.from({length:len}, (_,i) => h ? [x+i,y] : [x,y+i]); }
+function fits(fleet, cells, ignoreId){
+  const used = new Set(fleet.filter(s=>s.id!==ignoreId).flatMap(s=>s.cells.map(c=>K(...c))));
+  return cells.every(([x,y]) => x>=0 && y>=0 && x<N && y<N && !used.has(K(x,y)));
+}
+function randomFleet(){
+  for (;;){
+    const fleet = [];
+    let ok = true;
+    for (const s of FLEET){
+      let placed = false;
+      for (let t=0; t<200 && !placed; t++){
+        const h = Math.random()<.5, x = Math.floor(Math.random()*(h?N-s.len+1:N)), y = Math.floor(Math.random()*(h?N:N-s.len+1));
+        const cells = shipCells(x,y,s.len,h);
+        if (fits(fleet, cells)) { fleet.push({id:s.id, h, cells}); placed = true; }
+      }
+      if (!placed){ ok = false; break; }
+    }
+    if (ok) return fleet;
+  }
+}
+// Resultado de un disparo contra una flota, según los disparos previos del rival.
+function resolveShot(fleet, prev, x, y){
+  const hit = new Set((prev||[]).map(s=>K(s.x,s.y))); hit.add(K(x,y));
+  const ship = fleet.find(s => s.cells.some(c => c[0]===x && c[1]===y));
+  const all = fleet.every(s => s.cells.every(c => hit.has(K(...c))));
+  if (!ship) return {shot:{x,y,r:"agua"}, all:false};
+  const sunk = ship.cells.every(c => hit.has(K(...c)));
+  return {shot: sunk ? {x,y,r:"hundido",n:ship.id,s:ship.cells} : {x,y,r:"tocado"}, all};
+}
+function shotPatch(g, by, shot, all, targetFleet){
+  const to = other(by), shots = [...(g.shots?.[by]||[]), {...shot, t:(g.rev||0)}];
+  const p = {pending:null, shots:{[by]:shots}, turn: shot.r==="agua" ? to : by, last:{by, x:shot.x, y:shot.y, r:shot.r, n:shot.n||null}};
+  if (all){
+    Object.assign(p, {phase:"over", winner:by, scores:{...g.scores, [by]:(g.scores?.[by]||0)+1}});
+    if (targetFleet) p.reveal = {[to]:targetFleet};
+  }
+  return p;
+}
+
+/* ===== Estado ===== */
+const S = {
+  db:null, uid:null, status:"loading", net:"", netOk:false,
+  nick: LS.get("nick") || "", lp1: LS.get("lp1") || LS.get("nick") || "", lp2: LS.get("lp2") || "", level: LS.get("level") || "medio",
+  code:null, game:null, unsub:null, activeSeat:null,
+  priv:{match:0, fleet:[], ok:false}, sel:"portaaviones", horiz:true, joinErr:"", done:{},
+};
+const ref = () => S.db.doc("games/"+S.code);
+const privPath = sd => `data/users/${S.uid}/n_${S.code}` + (sd ? "_"+sd : "");
+const privRef = () => S.db.doc(privPath(S.game?.local ? S.activeSeat : null));
+const seat = () => { const g=S.game; if(!g) return null; if (g.local) return S.activeSeat; if (g.players?.A?.uid===S.uid) return "A"; if (g.players?.B?.uid===S.uid) return "B"; return null; };
+const nickOf = s => S.game?.players?.[s]?.nick || (s==="A"?"Jugador 1":"Jugador 2");
+const loadPriv = sd => { const d = LS.get("doc:"+privPath(sd)); return d && d.match===S.game.match ? d : {match:S.game.match, fleet:[], ok:false}; };
+const savePriv = () => privRef().set({...S.priv});
+
+async function write(patch){
+  try { await ref().update(patch); return true; }
+  catch(e){
+    await new Promise(r=>setTimeout(r,400+Math.random()*600));
+    try { await ref().update(patch); return true; } catch { toast("Se cortó la conexión. Probá de nuevo."); return false; }
+  }
+}
+
+/* ===== Conexión ===== */
+function setNet(state){
+  S.net = state; S.netOk = state==="ok";
+  const el = $("#netst"); if (!el) return;
+  el.className = "netst " + state;
+  el.innerHTML = state==="ok" ? "● Conectado al servidor de partidas"
+    : state==="connecting" ? "● Conectando al servidor de partidas…"
+    : `● Sin conexión al servidor de partidas <button type="button" class="linkbtn" id="netretry">Reintentar</button>`;
+  const r = $("#netretry"); if (r) r.onclick = () => ensureNet();
+}
+async function ensureNet(){
+  if (Net.client?.connected){ setNet("ok"); return true; }
+  setNet("connecting");
+  try { await Net.connect(); setNet("ok"); return true; }
+  catch { setNet("fail"); toast("No hay conexión con el servidor de partidas. Revisá tu internet o jugá contra la IA.", 5000); return false; }
+}
+async function busy(btnId, label, fn){
+  const b = $("#"+btnId); if (!b || b.disabled) return;
+  const old = b.textContent; b.disabled = true; b.textContent = label;
+  try { await fn(); } finally { if (b.isConnected){ b.disabled = false; b.textContent = old; } }
+}
+
+/* ===== Partidas ===== */
+function genCode(){ const L="BCDFGHJKLMNPRSTVXZ"; let c=""; for(let i=0;i<4;i++) c+=L[Math.floor(Math.random()*L.length)]; return c; }
+const newGame = extra => ({ created:Date.now(), match:1, phase:"place", scores:{A:0,B:0}, ready:null, starter:"A", turn:"A",
+  pending:null, shots:{A:[],B:[]}, last:null, winner:null, reveal:null, ...extra });
+
+function saveNick(){
+  const v = ($("#nick")?.value ?? S.nick).trim().slice(0,16);
+  if (!v){ toast("Escribí tu nombre."); $("#nick")?.focus(); return false; }
+  S.nick = v; LS.set("nick", v); return true;
+}
+async function createGame(){
+  if (!saveNick()) return;
+  if (!await ensureNet()) return;
+  let code;
+  for (let i=0;i<3;i++){ code=genCode(); const s=await S.db.doc("games/"+code).get().catch(()=>null); if (s && !s.exists) break; }
+  S.code = code;
+  try { await ref().set(newGame({code, phase:"lobby", players:{A:{uid:S.uid,nick:S.nick}}})); }
+  catch { toast("No se pudo crear la partida. Revisá tu conexión."); S.code=null; return; }
+  await enter(code);
+}
+async function joinGame(raw){
+  if (!saveNick()) return;
+  const code = (raw||"").toUpperCase().replace(/[^A-Z]/g,""); S.joinCode = code;
+  if (code.length!==4){ S.joinErr="El código tiene 4 letras."; render(true); return; }
+  if (!await ensureNet()) return;
+  const snap = await S.db.doc("games/"+code).get().catch(()=>null);
+  if (!snap || !snap.exists){ S.joinErr="No existe una partida con ese código."; render(true); return; }
+  const g = snap.data();
+  S.code = code;
+  if (g.players?.A?.uid===S.uid || g.players?.B?.uid===S.uid){ await enter(code); return; }
+  if (g.players?.B){ S.code=null; S.joinErr="Esa partida ya tiene dos jugadores."; render(true); return; }
+  if (!await write({players:{B:{uid:S.uid,nick:S.nick}}, phase:"place"})){ S.code=null; return; }
+  await enter(code);
+}
+async function createAIGame(){
+  if (!saveNick()) return;
+  const code = "IA" + genCode() + Date.now().toString(36).slice(-3).toUpperCase();
+  S.code = code;
+  await NetDB.doc("games/"+code).set(newGame({code, ai:S.level, players:{A:{uid:S.uid,nick:S.nick}, B:{uid:"bot",nick:"La IA"}}, bot:null}));
+  await enter(code);
+}
+async function createLocalGame(){
+  const n1 = ($("#lp1").value||"").trim().slice(0,16), n2 = ($("#lp2").value||"").trim().slice(0,16);
+  if (!n1){ toast("Escribí el nombre del jugador 1."); $("#lp1").focus(); return; }
+  if (!n2){ toast("Escribí el nombre del jugador 2."); $("#lp2").focus(); return; }
+  if (n1.toLowerCase()===n2.toLowerCase()){ toast("Usen nombres distintos para no confundirse."); return; }
+  S.lp1=n1; S.lp2=n2; LS.set("lp1",n1); LS.set("lp2",n2);
+  const code = "LP" + genCode() + Date.now().toString(36).slice(-3).toUpperCase();
+  S.code = code; S.activeSeat = null;
+  await NetDB.doc("games/"+code).set(newGame({code, local:true, players:{A:{uid:S.uid,nick:n1}, B:{uid:S.uid,nick:n2}}}));
+  await enter(code);
+  S.activeSeat = "A";
+}
+async function enter(code){
+  S.code = code; LS.set("code", code); S.joinErr="";
+  startChat(code);
+  if (!/^LP/.test(code)){
+    const p = await privRef().get().catch(()=>null);
+    S.priv = p && p.exists ? p.data() : {match:0, fleet:[], ok:false};
+  }
+  if (S.unsub) S.unsub();
+  S.unsub = ref().onSnapshot(snap => {
+    if (!snap.exists){ toast("La partida ya no existe."); leave(); return; }
+    S.game = snap.data(); onGame();
+  });
+}
+/* ===== Chat =====
+   Solo en partidas online. Cada jugador escribe en su propio tema (código-chatA / código-chatB),
+   así los mensajes de los dos nunca se pisan aunque escriban al mismo tiempo. */
+const QUICK = ["¡Bien ahí!", "Uh, no 😅", "¡Tocado!", "¡Agua!", "¡Revancha!", "😂"];
+const Chat = {code:null, msgs:{A:[], B:[]}, unsubs:[], open:false};
+const chatRef = sd => NetDB.doc(`games/${Chat.code}-chat${sd}`);
+function startChat(code){
+  if (Chat.code===code) return;
+  stopChat();
+  if (isLocal(code)) return;
+  Chat.code = code; Chat.msgs = {A:[], B:[]};
+  for (const sd of ["A","B"]) Chat.unsubs.push(chatRef(sd).onSnapshot(snap => {
+    const before = Chat.msgs[sd].length;
+    Chat.msgs[sd] = snap.data()?.msgs || [];
+    if (sd!==seat() && Chat.msgs[sd].length>before && !Chat.open && before) buzz([40]);
+    updateChat();
+  }));
+}
+function stopChat(){ Chat.unsubs.forEach(u=>u()); Chat.unsubs=[]; Chat.code=null; Chat.open=false; updateChat(); }
+async function sendChat(text){
+  const me=seat(); text=(text||"").trim().slice(0,200);
+  if (!text || !me || !Chat.code) return;
+  try { await chatRef(me).set({msgs:[...Chat.msgs[me], {text, t:Date.now()}].slice(-40)}); }
+  catch { toast("No se pudo mandar el mensaje. Revisá tu conexión."); }
+}
+function updateChat(){
+  const g=S.game, me=seat(), btn=$("#chatbtn"), box=$("#chat");
+  const on = !!(Chat.code && g && !g.local && !g.ai && me);
+  btn.hidden = !on || Chat.open; box.hidden = !on || !Chat.open;
+  if (!on) return;
+  const op=other(me), seenKey="chatseen:"+Chat.code, seen=LS.get(seenKey)||0;
+  const all=[...Chat.msgs.A.map(m=>({...m,by:"A"})), ...Chat.msgs.B.map(m=>({...m,by:"B"}))].sort((a,b)=>a.t-b.t);
+  const unread = all.filter(m=>m.by===op && m.t>seen).length, badge=$("#chatbadge");
+  badge.hidden = !unread; badge.textContent = unread>9 ? "9+" : unread;
+  if (!Chat.open) return;
+  if (all.length) LS.set(seenKey, all[all.length-1].t);
+  badge.hidden = true;
+  $("#chatwith").textContent = g.players?.[op] ? "con "+nickOf(op) : "esperando al rival";
+  const html = all.map(m=>`<li class="${m.by===me?"mine":""}"><span>${esc(m.text)}</span></li>`).join("") || `<li class="none">Todavía no hay mensajes. Saludá a tu rival.</li>`;
+  const log=$("#chatlog");
+  if (log.innerHTML!==html){ log.innerHTML=html; log.scrollTop=log.scrollHeight; }
+}
+
+function leave(){
+  stopChat();
+  if (S.unsub) S.unsub(); S.unsub=null; S.game=null; S.code=null; S.activeSeat=null; LS.set("code", null); render(true);
+}
+
+/* ===== Reacciones ===== */
+let lastShotSeen = "";
+function onGame(){
+  const g = S.game;
+  if (g.local){ onLocal(g); render(); return; }
+  const me = seat();
+  if (!me){ render(); return; }
+  if (S.priv.match !== g.match){ S.priv = {match:g.match, fleet:[], ok:false}; S.sel="portaaviones"; }
+  const op = other(me);
+  // Me dispararon: mi celular conoce mi flota y responde.
+  if (g.phase==="play" && g.pending && g.pending.to===me && !S.done[g.pending.id] && S.priv.fleet.length===FLEET.length){
+    S.done[g.pending.id] = true;
+    const {shot, all} = resolveShot(S.priv.fleet, g.shots?.[op], g.pending.x, g.pending.y);
+    write(shotPatch(g, op, shot, all, S.priv.fleet));
+  }
+  if (g.phase==="over" && !g.reveal?.[me] && S.priv.fleet.length && !S.done["rv"+g.rev]){ S.done["rv"+g.rev]=true; write({reveal:{[me]:S.priv.fleet}}); }
+  if (g.phase==="place" && g.ready?.A && g.ready?.B && !S.done["go"+g.rev]){ S.done["go"+g.rev]=true; write({phase:"play", turn:g.starter||"A"}); }
+  if (g.phase==="place" && S.priv.ok && !g.ready?.[me] && !S.done["rd"+g.rev]){ S.done["rd"+g.rev]=true; write({ready:{[me]:true}}); }
+  if (g.last && g.last.by===op){ const k=g.rev+":"+K(g.last.x,g.last.y); if (k!==lastShotSeen){ lastShotSeen=k; if (g.last.r!=="agua") buzz(g.last.r==="hundido"?[80,60,80,60,120]:[60]); } }
+  if (g.ai) scheduleBot();
+  render();
+}
+// Pasar el celular: el teléfono conoce las dos flotas y resuelve todo al momento.
+function onLocal(g){
+  if (g.phase==="place" && g.ready?.A && g.ready?.B && !S.done["go"+g.rev]){ S.done["go"+g.rev]=true; write({phase:"play", turn:g.starter||"A"}); }
+  if (g.phase==="over" && (!g.reveal?.A || !g.reveal?.B) && !S.done["rv"+g.rev]){
+    S.done["rv"+g.rev]=true;
+    write({reveal:{A:LS.get("doc:"+privPath("A"))?.fleet||[], B:LS.get("doc:"+privPath("B"))?.fleet||[]}});
+  }
+  if (!actorOf(g) && !S.activeSeat) S.activeSeat="A";
+  if (S.activeSeat && S.priv.match!==g.match) S.priv = loadPriv(S.activeSeat);
+}
+function actorOf(g){
+  if (g.phase==="place") return !g.ready?.A ? "A" : !g.ready?.B ? "B" : null;
+  if (g.phase==="play") return g.turn;
+  return null;
+}
+function takePhone(sd){ S.activeSeat=sd; S.priv=loadPriv(sd); S.sel="portaaviones"; render(true); scrollTo(0,0); }
+
+/* ===== Jugadas ===== */
+function placeAt(x, y){
+  const f = S.priv.fleet, onShip = f.find(s => s.cells.some(c=>c[0]===x&&c[1]===y));
+  if (onShip && (!S.sel || onShip.id!==S.sel)){
+    // Tocar un barco ya puesto lo levanta para moverlo.
+    S.priv.fleet = f.filter(s=>s!==onShip); S.sel = onShip.id; S.horiz = onShip.h; savePriv(); render(); return;
+  }
+  if (!S.sel) return;
+  const len = SHIP[S.sel].len;
+  const sx = S.horiz ? Math.min(x, N-len) : x, sy = S.horiz ? y : Math.min(y, N-len);
+  const cells = shipCells(sx, sy, len, S.horiz);
+  if (!fits(f, cells, S.sel)){ toast("Ahí se superpone con otro barco. Probá en otro lugar o girá el barco."); return; }
+  S.priv.fleet = [...f.filter(s=>s.id!==S.sel), {id:S.sel, h:S.horiz, cells}];
+  S.sel = FLEET.find(s => !S.priv.fleet.some(p=>p.id===s.id))?.id || null;
+  savePriv(); render();
+}
+function readyFleet(){
+  const g=S.game, me=seat();
+  if (S.priv.fleet.length!==FLEET.length) return;
+  S.priv.ok = true; savePriv();
+  write({ready:{[me]:true}, ...(g.ready?.[other(me)] ? {phase:"play", turn:g.starter||"A"} : {})});
+  render();
+}
+function fire(x, y){
+  const g=S.game, me=seat();
+  if (g.phase!=="play" || g.turn!==me || g.pending) return;
+  if ((g.shots?.[me]||[]).some(s=>s.x===x&&s.y===y)) return;
+  if (g.local){
+    const tf = LS.get("doc:"+privPath(other(me)))?.fleet || [];
+    const {shot, all} = resolveShot(tf, g.shots?.[me], x, y);
+    write(shotPatch(g, me, shot, all));
+    return;
+  }
+  write({pending:{id:rid(), by:me, to:other(me), x, y}});
+}
+function rematch(){
+  const g=S.game, st=other(g.starter||"A");
+  write({match:g.match+1, phase:"place", ready:null, pending:null, shots:{A:[],B:[]}, last:null, winner:null, reveal:null, starter:st, turn:st, bot:null});
+}
+
+/* ===== La IA =====
+   Juega como B. Fácil: casi siempre dispara al azar. Medio: cuando toca un barco, sigue alrededor hasta hundirlo.
+   Difícil: además calcula en qué casillas es más probable que haya barcos. */
+let botT;
+function scheduleBot(){
+  clearTimeout(botT);
+  const g=S.game, quick = g.pending?.to==="B" || g.phase!=="play";
+  botT = setTimeout(botAct, quick ? 500+Math.random()*400 : 900+Math.random()*700);
+}
+function botKnowledge(g){
+  const shots = g.shots?.B || [], shot = new Set(shots.map(s=>K(s.x,s.y)));
+  const sunkCells = new Set(shots.filter(s=>s.r==="hundido").flatMap(s=>s.s.map(c=>K(...c))));
+  const open = shots.filter(s=>s.r!=="agua" && !sunkCells.has(K(s.x,s.y)));
+  const left = FLEET.filter(f => !shots.some(s=>s.r==="hundido" && s.n===f.id));
+  const free = []; for (let y=0;y<N;y++) for (let x=0;x<N;x++) if (!shot.has(K(x,y))) free.push([x,y]);
+  return {shot, sunkCells, open, left, free};
+}
+function botTarget(g){
+  const kn = botKnowledge(g), {shot, open, free} = kn;
+  const inb = (x,y) => x>=0&&y>=0&&x<N&&y<N && !shot.has(K(x,y));
+  // Fácil: a veces aprovecha un barco tocado, casi siempre tira al azar.
+  if (g.ai==="facil" && open.length && Math.random()<0.5){
+    const near = open.flatMap(s=>[[s.x+1,s.y],[s.x-1,s.y],[s.x,s.y+1],[s.x,s.y-1]]).filter(([x,y])=>inb(x,y));
+    if (near.length) return pickOne(near);
+  }
+  if (g.ai==="facil" || (!open.length && g.ai==="medio")){
+    const par = free.filter(([x,y]) => (x+y)%2===0);
+    return pickOne(g.ai==="medio" && par.length ? par : free);
+  }
+  if (g.ai==="medio"){
+    let cand = [];
+    if (open.length>=2){
+      const sameRow = open.every(s=>s.y===open[0].y), sameCol = open.every(s=>s.x===open[0].x);
+      if (sameRow){ const xs=open.map(s=>s.x); cand=[[Math.min(...xs)-1,open[0].y],[Math.max(...xs)+1,open[0].y]]; }
+      if (sameCol){ const ys=open.map(s=>s.y); cand=[[open[0].x,Math.min(...ys)-1],[open[0].x,Math.max(...ys)+1]]; }
+      cand = cand.filter(([x,y])=>inb(x,y));
+    }
+    if (!cand.length) cand = open.flatMap(s=>[[s.x+1,s.y],[s.x-1,s.y],[s.x,s.y+1],[s.x,s.y-1]]).filter(([x,y])=>inb(x,y));
+    return cand.length ? pickOne(cand) : pickOne(free);
+  }
+  // Difícil: densidad de probabilidad
+  const blocked = new Set([...g.shots.B.filter(s=>s.r==="agua").map(s=>K(s.x,s.y)), ...kn.sunkCells]);
+  const openSet = new Set(open.map(s=>K(s.x,s.y)));
+  const score = {};
+  for (const s of kn.left) for (const h of [true,false]) for (let y=0;y<N;y++) for (let x=0;x<N;x++){
+    const cells = shipCells(x,y,s.len,h);
+    if (!cells.every(([cx,cy]) => cx<N && cy<N && !blocked.has(K(cx,cy)))) continue;
+    const cover = cells.filter(c=>openSet.has(K(...c))).length;
+    if (open.length && !cover) continue;
+    const w = open.length ? 1 + 20*cover : 1;
+    for (const c of cells){ const k=K(...c); if (!shot.has(k)) score[k]=(score[k]||0)+w; }
+  }
+  let best = -1, opts = [];
+  for (const [x,y] of free){ const v = score[K(x,y)]||0; if (v>best){ best=v; opts=[[x,y]]; } else if (v===best) opts.push([x,y]); }
+  return best>0 ? pickOne(opts) : pickOne(free);
+}
+function botAct(){
+  const r = NetDB.doc("games/"+S.code), g = r.peek?.();
+  if (!g || !g.ai) return;
+  const fleet = g.bot?.match===g.match ? g.bot.fleet : null;
+  if (g.phase==="place"){
+    if (!fleet || !g.ready?.B) r.update({bot:{match:g.match, fleet:randomFleet()}, ready:{B:true}, ...(g.ready?.A?{phase:"play", turn:g.starter||"A"}:{})});
+    return;
+  }
+  if (g.phase==="over" && fleet && !g.reveal?.B){ r.update({reveal:{B:fleet}}); return; }
+  if (g.phase!=="play" || !fleet) return;
+  if (g.pending?.to==="B"){
+    const {shot, all} = resolveShot(fleet, g.shots?.A, g.pending.x, g.pending.y);
+    r.update(shotPatch(g, "A", shot, all, fleet));
+  } else if (!g.pending && g.turn==="B"){
+    const [x,y] = botTarget(g);
+    r.update({pending:{id:rid(), by:"B", to:"A", x, y}});
+  }
+}
+
+/* ===== Pantallas ===== */
+// Safari no compensa el desplazamiento cuando cambia el contenido de arriba: al rearmar la pantalla,
+// el elemento de referencia (tablero o mesa) vuelve a quedar exactamente donde estaba.
+function keepInPlace(sel, fn){
+  const a = document.querySelector(sel), top = a ? a.getBoundingClientRect().top : null;
+  fn();
+  const b = document.querySelector(sel);
+  if (top!=null && b){ const d = b.getBoundingClientRect().top - top; if (Math.abs(d) > 0.5) window.scrollBy(0, d); }
+}
+let screen = "";
+function render(force){
+  const app=$("#app"), g=S.game, me=seat();
+  let sc;
+  if (S.status!=="ready") sc="loading";
+  else if (!S.code || !g) sc = S.code ? "loading" : "home";
+  else if (g.local && actorOf(g) && actorOf(g)!==S.activeSeat) sc="handoff";
+  else if (!me) sc="notseat";
+  else sc = g.phase;
+  // El inicio tiene campos de texto: solo se rearma al cambiar de pantalla.
+  if (sc==="home" && screen==="home" && !force){ return; }
+  const same = screen===sc;
+  screen = sc;
+  const paint = () => { app.innerHTML = (VIEWS[sc]||VIEWS.loading)(); bind(sc); };
+  if (same && (sc==="play" || sc==="place")) keepInPlace(sc==="play" ? '.board[data-kind="target"]' : ".board", paint); else paint();
+  updateChat();
+}
+const mast = () => `<header class="mast"><span class="label">Agua · Tocado · Hundido</span><h1 class="brand">Batalla <span>Naval</span></h1></header>`;
+
+/* Barcos dibujados: cada casilla muestra su tramo (popa, medio o proa) en una caja de 100×100 en horizontal.
+   Los barcos verticales usan el mismo dibujo girado 90°. */
+const HULL = {hull:"#8f9daa", edge:"#56636f", deck:"#b9c5ce", dark:"#3f4b56"};
+function shipSVG(id, i, len){
+  const part = i===0 ? "stern" : i===len-1 ? "bow" : "mid", sub = id==="submarino";
+  const y0 = sub ? 30 : 22, y1 = sub ? 70 : 78, fill = sub ? "#5f6e7b" : HULL.hull;
+  const hullPath = part==="bow" ? `M0 ${y0} H52 Q98 50 52 ${y1} H0 Z`
+    : part==="stern" ? `M101 ${y0} H22 Q4 ${y0} 4 ${(y0+y1)/2} Q4 ${y1} 22 ${y1} H101 Z`
+    : `M-1 ${y0} H101 V${y1} H-1 Z`;
+  // El contorno no se dibuja en los cortes entre casillas, para que el barco se vea de una sola pieza.
+  const edgePath = part==="bow" ? `M0 ${y0} H52 Q98 50 52 ${y1} H0`
+    : part==="stern" ? `M101 ${y0} H22 Q4 ${y0} 4 ${(y0+y1)/2} Q4 ${y1} 22 ${y1} H101`
+    : `M-1 ${y0} H101 M-1 ${y1} H101`;
+  let d = `<path d="${hullPath}" fill="${fill}"/><path d="${edgePath}" fill="none" stroke="${HULL.edge}" stroke-width="3"/>`;
+  // cubierta
+  if (!sub){
+    const dx0 = part==="stern" ? 18 : 0, dx1 = part==="bow" ? 48 : 100;
+    d += `<rect x="${dx0}" y="${y0+9}" width="${dx1-dx0}" height="${y1-y0-18}" fill="${id==="portaaviones"?"#6d7a85":HULL.deck}"/>`;
+  }
+  const mid = Math.floor((len-1)/2);
+  const turret = cx => `<circle cx="${cx}" cy="50" r="11" fill="${HULL.dark}"/><rect x="${cx}" y="47" width="30" height="6" rx="2" fill="${HULL.dark}"/>`;
+  if (id==="portaaviones"){
+    d += `<line x1="${part==="stern"?20:0}" y1="50" x2="${part==="bow"?46:100}" y2="50" stroke="#e8f3fa" stroke-width="3" stroke-dasharray="10 8"/>`;
+    if (i===3) d += `<rect x="30" y="${y0-2}" width="34" height="16" rx="3" fill="${HULL.dark}"/>`;
+  } else if (id==="acorazado"){
+    if (i===1 || i===len-2) d += turret(i===1 ? 45 : 25);
+    if (i===mid && len>3 && i!==1) d += `<rect x="28" y="36" width="44" height="28" rx="4" fill="${HULL.dark}"/>`;
+    if (i===mid && i===1) d += `<rect x="58" y="38" width="22" height="24" rx="3" fill="${HULL.dark}"/>`;
+  } else if (id==="crucero"){
+    if (part==="bow") d += turret(14);
+    if (part==="mid") d += `<rect x="26" y="36" width="48" height="28" rx="4" fill="${HULL.dark}"/>`;
+    if (part==="stern") d += `<circle cx="62" cy="50" r="9" fill="${HULL.dark}"/>`;
+  } else if (sub){
+    if (part==="mid") d += `<rect x="30" y="36" width="40" height="28" rx="12" fill="#3c4853"/><rect x="46" y="28" width="6" height="12" fill="#3c4853"/>`;
+    if (part==="bow") d += `<line x1="0" y1="50" x2="44" y2="50" stroke="#3c4853" stroke-width="3"/>`;
+  } else if (id==="destructor"){
+    if (part==="bow") d += turret(6);
+    if (part==="stern") d += `<rect x="42" y="38" width="26" height="24" rx="3" fill="${HULL.dark}"/><circle cx="55" cy="50" r="5" fill="#2a333b"/>`;
+  }
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${d}</svg>`;
+}
+const hullHTML = (id, i, len, h) => `<span class="hull${h?"":" v"}">${shipSVG(id, i, len)}</span>`;
+
+function boardHTML(kind){
+  // kind "own": mi flota con los disparos del rival; "target": mis disparos sobre el rival.
+  const g=S.game, me=seat(), op=other(me);
+  const shots = kind==="own" ? (g.shots?.[op]||[]) : (g.shots?.[me]||[]);
+  const sm = new Map(shots.map(s=>[K(s.x,s.y), s]));
+  const sunk = new Map(); shots.filter(s=>s.r==="hundido").forEach(s=>s.s.forEach(c=>sunk.set(K(...c), true)));
+  const fleet = kind==="own" ? S.priv.fleet : (g.reveal?.[op] || []);
+  const shipAt = new Map(); fleet.forEach(s=>s.cells.forEach((c,i)=>shipAt.set(K(...c), {s, i})));
+  // Barcos rivales hundidos: se dibujan con las casillas que revela el disparo que los hundió.
+  if (kind==="target") shots.filter(s=>s.r==="hundido").forEach(s=>{ const cs=s.s, h=cs.length<2||cs[0][1]===cs[1][1]; cs.forEach((c,i)=>{ if (!shipAt.has(K(...c))) shipAt.set(K(...c), {s:{id:s.n, h, cells:cs}, i}); }); });
+  const live = kind==="target" && g.phase==="play" && g.turn===me && !g.pending;
+  const last = g.last && ((kind==="target" && g.last.by===me) || (kind==="own" && g.last.by===op)) ? K(g.last.x,g.last.y) : "";
+  let h = `<div class="board ${kind==="own"&&g.phase!=="place"?"small":""} ${kind==="target"?"target":""} ${live?"live":""}" data-kind="${kind}"><span></span>`;
+  for (let x=0;x<N;x++) h += `<span class="lab">${x+1}</span>`;
+  for (let y=0;y<N;y++){
+    h += `<span class="lab">${ROWS[y]}</span>`;
+    for (let x=0;x<N;x++){
+      const k=K(x,y), s=sm.get(k), sh=shipAt.get(k);
+      const cls = ["cell"];
+      if (sh && kind==="own") cls.push("ship");
+      if (sh && kind==="target" && !s) cls.push("reveal");
+      if (s){ cls.push("shot"); cls.push(sunk.has(k) ? "sunk" : s.r==="agua" ? "miss" : "hit"); }
+      else if (kind==="own" && sunk.has(k)) cls.push("sunk");
+      if (k===last) cls.push("last");
+      const lbl = coord(x,y) + (s ? ": "+s.r : "");
+      const draw = sh && (kind==="own" || cls.includes("reveal") || sunk.has(k));
+      h += `<button type="button" class="${cls.join(" ")}" data-x="${x}" data-y="${y}" aria-label="${lbl}"${kind==="target"&&(!live||s)?" tabindex=\"-1\"":""}>${draw?hullHTML(sh.s.id, sh.i, sh.s.cells.length, sh.s.h):""}</button>`;
+    }
+  }
+  return h + `</div>`;
+}
+function fleetStatus(sd){
+  // Barcos del jugador sd: cuáles ya fueron hundidos por el otro.
+  const g=S.game, shots = g.shots?.[other(sd)]||[];
+  return `<div class="fleet">${FLEET.map(f=>{ const sk = shots.some(s=>s.r==="hundido"&&s.n===f.id);
+    return `<span class="ship-chip ${sk?"sunk":""}"><i>${"<b></b>".repeat(f.len)}</i>${f.name}</span>`; }).join("")}</div>`;
+}
+function scoreHTML(){
+  const g=S.game, me=seat()||"A", op=other(me), tm = g.phase==="play" ? g.turn : null;
+  const w = n => `${n} ${n===1?"victoria":"victorias"}`;
+  return `<div class="score"><div class="p${tm===me?" turn":""}"><span class="nick">${esc(nickOf(me))}${g.local?"":" (vos)"}</span><span class="wins">${w(g.scores?.[me]||0)}</span></div>
+    <div class="mid">Partida<br>${g.match}</div>
+    <div class="p r${tm===op?" turn":""}"><span class="nick">${esc(g.players?.[op]?nickOf(op):"Esperando…")}</span><span class="wins">${w(g.scores?.[op]||0)}</span></div></div>`;
+}
+function histHTML(){
+  const g=S.game, me=seat();
+  const all = [...(g.shots?.A||[]).map(s=>({...s,by:"A"})), ...(g.shots?.B||[]).map(s=>({...s,by:"B"}))];
+  // "t" es la versión de la partida en el momento del disparo: ordena los disparos de los dos.
+  const items = all.sort((a,b)=>b.t-a.t).slice(0,30).map(s => {
+    const who = s.by===me && !g.local ? "Vos" : esc(nickOf(s.by));
+    const txt = s.r==="hundido" ? `Hundido: ${SHIP[s.n]?.name}` : s.r==="tocado" ? "Tocado" : "Agua";
+    return `<li class="${s.by===me?"mine":""}"><span class="who">${who}</span><span>${coord(s.x,s.y)}</span><span class="pill ${s.r}">${txt}</span></li>`;
+  }).join("");
+  return `<section class="panel hist"><span class="label">Historial de disparos</span><ol>${items || `<li><span></span><span class="muted">Todavía no hubo disparos.</span><span></span></li>`}</ol></section>`;
+}
+
+const VIEWS = {
+  loading: () => `${mast()}<p class="muted">Preparando la flota…</p>`,
+  home: () => `${mast()}
+    <section class="panel">
+      <div class="field"><label class="label" for="nick">Tu nombre</label>
+        <input type="text" id="nick" maxlength="16" autocomplete="nickname" placeholder="Ej.: Fran" value="${esc(S.nick)}"></div>
+      <button class="btn" id="create" type="button">Crear partida online</button>
+      <p id="netst" class="netst" aria-live="polite"></p>
+      <div class="field"><label class="label" for="join">¿Te pasaron un código?</label>
+        <div class="ask"><input type="text" id="join" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD" value="${esc(S.joinCode||"")}" style="text-transform:uppercase;letter-spacing:.2em;font-family:var(--f-display)">
+        <button class="btn" id="joinb" type="button">Unirme</button></div>
+        <p class="err" id="joinErr">${esc(S.joinErr)}</p></div>
+    </section>
+    <section class="panel">
+      <div class="field"><span class="label" id="lvl">Jugar contra la IA</span>
+        <div class="seg" role="group" aria-labelledby="lvl">${[["facil","Fácil"],["medio","Medio"],["dificil","Difícil"]].map(([v,t])=>`<button type="button" data-lv="${v}" aria-pressed="${S.level===v}">${t}</button>`).join("")}</div></div>
+      <button class="btn" id="aib" type="button">Jugar contra la IA</button>
+      <p class="muted" style="font-size:.92rem">Un solo celular, no necesita internet.</p>
+    </section>
+    <section class="panel">
+      <span class="label">Jugar pasando el celular</span>
+      <div class="row">
+        <div class="field"><label class="label" for="lp1">Jugador 1</label><input type="text" id="lp1" maxlength="16" autocomplete="off" placeholder="Ej.: Fran" value="${esc(S.lp1)}"></div>
+        <div class="field"><label class="label" for="lp2">Jugador 2</label><input type="text" id="lp2" maxlength="16" autocomplete="off" placeholder="Ej.: Sofi" value="${esc(S.lp2)}"></div>
+      </div>
+      <button class="btn" id="lpb" type="button">Jugar pasando el celular</button>
+      <p class="muted" style="font-size:.92rem">Dos jugadores con un solo celular, sin internet. El juego avisa a quién pasárselo.</p>
+    </section>
+    <section class="panel">
+      <span class="label">Cómo se juega</span>
+      <p>Cada uno ubica su flota: portaaviones (5), acorazado (4), crucero (3), submarino (3) y destructor (2). En tu turno tocá una casilla del mar enemigo. Si das en un barco es <b>tocado</b> y seguís tirando; si lo completás, <b>hundido</b>. Si es <b>agua</b>, le toca al otro. Gana quien hunde toda la flota rival.</p>
+    </section>`,
+  notseat: () => `${mast()}<section class="panel"><h2>Esa partida ya tiene dos jugadores</h2><button class="btn" id="leave" type="button">Volver</button></section>`,
+  lobby: () => `${mast()}<section class="panel center">
+      <span class="label">Código de la partida</span><div class="code" id="code">${esc(S.code)}</div>
+      <p>Pasale este código a tu rival. Tiene que abrir Batalla Naval en su celular, escribir el código y tocar <b>Unirme</b>.</p>
+      <button class="btn ghost small" id="copy" type="button">Copiar código</button>
+    </section><p class="muted center">Esperando al otro jugador…</p><button class="btn ghost small" id="leave" type="button">Salir</button>`,
+  handoff: () => {
+    const g=S.game, a=actorOf(g), n=esc(nickOf(a));
+    const why = g.phase==="place" ? "Tiene que ubicar su flota." : g.last && g.last.r==="agua" && g.last.by===other(a) ? `${esc(nickOf(other(a)))} tiró al agua en ${coord(g.last.x,g.last.y)}. Le toca disparar.` : "Le toca disparar.";
+    return `${scoreHTML()}<section class="panel cover"><span class="label">Pasale el celular a</span><div class="who">${n}</div><p>${why}</p>
+      <button class="btn" id="take" type="button">Soy ${n}, mostrar mi tablero</button>
+      <p class="muted" style="font-size:.9rem">No mires la pantalla mientras juega el otro.</p></section>
+      <button class="btn ghost small" id="leave" type="button">Salir de la partida</button>`;
+  },
+  place: () => {
+    const g=S.game, me=seat(), f=S.priv.fleet, done=f.length===FLEET.length;
+    if (S.priv.ok){
+      return `${scoreHTML()}<section class="status"><h2>Flota lista</h2><p class="muted">Esperando que ${esc(nickOf(other(me)))} ubique su flota…</p></section>
+        <div class="boardwrap"><span class="label">Tu flota</span>${boardHTML("own")}</div><button class="btn ghost small" id="leave" type="button">Salir de la partida</button>`;
+    }
+    return `${scoreHTML()}
+      <section class="status me"><h2>${g.local?esc(nickOf(me))+", ubicá":"Ubicá"} tu flota</h2>
+        <p>${S.sel ? `Tocá el mar para poner el <b>${SHIP[S.sel].name}</b> (${SHIP[S.sel].len} casillas, ${S.horiz?"horizontal":"vertical"}).` : "¡Flota completa! Podés tocar un barco para moverlo."}</p></section>
+      <div class="fleet">${FLEET.map(s=>{ const placed=f.some(p=>p.id===s.id); return `<button type="button" class="ship-chip ${placed?"done":""}" data-ship="${s.id}" aria-pressed="${S.sel===s.id}"><i>${"<b></b>".repeat(s.len)}</i>${s.name}</button>`; }).join("")}</div>
+      <div class="tools"><button class="btn ghost small" id="rot" type="button">Girar: ${S.horiz?"horizontal":"vertical"}</button>
+        <button class="btn ghost small" id="rnd" type="button">Al azar</button><button class="btn ghost small" id="clr" type="button">Borrar todo</button></div>
+      ${boardHTML("own")}
+      <button class="btn" id="ready" type="button"${done?"":" disabled"}>${done?(g.local?"Listo, pasar el celular":"Listo, a jugar"):"Ubicá los "+FLEET.length+" barcos"}</button>
+      <button class="btn ghost small" id="leave" type="button">Salir de la partida</button>`;
+  },
+  play: () => {
+    const g=S.game, me=seat(), op=other(me), L=g.last;
+    let cls="status", h;
+    if (g.pending && g.pending.by===me) h=`<h2>Disparando a ${coord(g.pending.x,g.pending.y)}…</h2>`;
+    else if (g.pending) h=`<h2>${esc(nickOf(op))} dispara a ${coord(g.pending.x,g.pending.y)}…</h2>`;
+    else if (g.turn===me){
+      cls+=" me";
+      const mineLast = L && L.by===me;
+      h = mineLast && L.r!=="agua"
+        ? `<div class="big ${L.r}">${L.r==="hundido"?"¡Hundido!":"¡Tocado!"}</div><p>${L.r==="hundido"?`Hundiste el ${SHIP[L.n]?.name} en ${coord(L.x,L.y)}.`:`Diste en ${coord(L.x,L.y)}.`} Seguís tirando.</p>`
+        : L && L.by===op && L.r==="agua" ? `<h2>Tu turno</h2><p>${esc(nickOf(op))} tiró al agua en ${coord(L.x,L.y)}. Tocá una casilla del mar enemigo.</p>`
+        : `<h2>Tu turno</h2><p>Tocá una casilla del mar enemigo para disparar.</p>`;
+    } else {
+      if (L && L.by===op && L.r!=="agua") cls+=" hit";
+      h = L && L.by===me && L.r==="agua" ? `<div class="big agua">Agua</div><p>Fallaste en ${coord(L.x,L.y)}. Ahora dispara ${esc(nickOf(op))}.</p>`
+        : L && L.by===op && L.r!=="agua" ? `<h2>${L.r==="hundido"?`Te hundieron el ${SHIP[L.n]?.name}`:`Te tocaron en ${coord(L.x,L.y)}`}</h2><p>${esc(nickOf(op))} sigue tirando.</p>`
+        : `<h2>Turno de ${esc(nickOf(op))}</h2>`;
+    }
+    return `${scoreHTML()}<section class="${cls}">${h}</section>
+      <div class="duo"><div class="boardwrap"><div class="boardhead"><span class="label">Mar de ${esc(nickOf(op))}</span></div>${boardHTML("target")}${fleetStatus(op)}</div>
+      <div class="boardwrap"><div class="boardhead"><span class="label">${g.local?"Flota de "+esc(nickOf(me)):"Tu flota"}</span></div>${boardHTML("own")}${fleetStatus(me)}</div></div>
+      ${histHTML()}
+      <button class="btn ghost small" id="leave" type="button">Salir de la partida</button>`;
+  },
+  over: () => {
+    const g=S.game, me=seat()||"A", op=other(me), won=g.winner===me;
+    const title = g.local ? `¡Ganó ${esc(nickOf(g.winner))}!` : won ? "¡Ganaste!" : `Ganó ${esc(nickOf(op))}`;
+    const n = (g.shots?.[g.winner]||[]).length;
+    return `${scoreHTML()}<section class="panel center"><h2 class="verdict ${won||g.local?"win":"lose"}">${title}</h2>
+      <p>${esc(nickOf(g.winner))} hundió toda la flota en ${n} disparos.</p>
+      <button class="btn" id="again" type="button">Revancha</button></section>
+      <div class="duo"><div class="boardwrap"><span class="label">Mar de ${esc(nickOf(op))}</span>${boardHTML("target")}</div>
+      <div class="boardwrap"><span class="label">${g.local?"Flota de "+esc(nickOf(me)):"Tu flota"}</span>${boardHTML("own")}</div></div>
+      <button class="btn ghost small" id="leave" type="button">Salir</button>`;
+  },
+};
+
+function bind(sc){
+  const l=$("#leave"); if (l) l.onclick=leave;
+  if (sc==="home"){
+    $("#create").onclick=()=>busy("create","Creando partida…",createGame);
+    const j=$("#join"); $("#joinb").onclick=()=>busy("joinb","Buscando…",()=>joinGame(j.value));
+    j.onkeydown=e=>{ if(e.key==="Enter") busy("joinb","Buscando…",()=>joinGame(j.value)); };
+    $("#aib").onclick=createAIGame; $("#lpb").onclick=createLocalGame;
+    document.querySelectorAll("[data-lv]").forEach(b=>b.onclick=()=>{ S.level=b.dataset.lv; LS.set("level",S.level); document.querySelectorAll("[data-lv]").forEach(x=>x.setAttribute("aria-pressed", x===b)); });
+    setNet(S.net || "connecting");
+  }
+  if (sc==="lobby") $("#copy").onclick=async()=>{ try { await navigator.clipboard.writeText(S.code); toast("Código copiado."); } catch { toast("Copiá el código a mano: "+S.code); } };
+  if (sc==="handoff") $("#take").onclick=()=>takePhone(actorOf(S.game));
+  if (sc==="place" && !S.priv.ok){
+    document.querySelectorAll("[data-ship]").forEach(b=>b.onclick=()=>{ const id=b.dataset.ship, p=S.priv.fleet.find(s=>s.id===id);
+      if (p){ S.priv.fleet=S.priv.fleet.filter(s=>s!==p); S.horiz=p.h; savePriv(); } S.sel=id; render(); });
+    $("#rot").onclick=()=>{ S.horiz=!S.horiz; render(); };
+    $("#rnd").onclick=()=>{ S.priv.fleet=randomFleet(); S.sel=null; savePriv(); render(); };
+    $("#clr").onclick=()=>{ S.priv.fleet=[]; S.sel="portaaviones"; savePriv(); render(); };
+    $("#ready").onclick=readyFleet;
+    $(".board").onclick=e=>{ const c=e.target.closest(".cell"); if (c) placeAt(+c.dataset.x, +c.dataset.y); };
+  }
+  if (sc==="play"){ const t=$('.board[data-kind="target"]'); t.onclick=e=>{ const c=e.target.closest(".cell"); if (c) fire(+c.dataset.x, +c.dataset.y); }; }
+  if (sc==="over") $("#again").onclick=rematch;
+}
+
+/* ===== Arranque ===== */
+$("#chatbtn").onclick=()=>{ Chat.open=true; updateChat(); $("#chatin").focus(); };
+$("#chatclose").onclick=()=>{ Chat.open=false; updateChat(); };
+$("#chatform").onsubmit=e=>{ e.preventDefault(); const i=$("#chatin"); sendChat(i.value); i.value=""; i.focus(); };
+document.querySelector("#chat .quick").innerHTML = QUICK.map(q=>`<button type="button" class="chip" data-quick="${esc(q)}">${esc(q)}</button>`).join("");
+document.querySelectorAll("[data-quick]").forEach(b=>b.onclick=()=>sendChat(b.dataset.quick));
+render();
+boot();
+async function boot(){
+  let uid = LS.get("uid"); if (!uid){ uid="u"+rid()+rid(); LS.set("uid",uid); }
+  S.db = NetDB; S.uid = uid;
+  const code = LS.get("code");
+  if (isLocal(code)){
+    S.status="ready";
+    const g = (await S.db.doc("games/"+code).get()).data();
+    if (g && g.players?.A?.uid===uid){ await enter(code); Net.connect().then(()=>setNet("ok")).catch(()=>setNet("fail")); return; }
+    LS.set("code", null);
+  }
+  S.status="ready"; render(true);
+  setNet("connecting");
+  try { await Net.connect(); setNet("ok"); } catch { setNet("fail"); }
+  if (code && !isLocal(code) && S.netOk && !S.code){
+    const snap = await S.db.doc("games/"+code).get().catch(()=>null), g = snap?.exists ? snap.data() : null;
+    if (g && (g.players?.A?.uid===uid || g.players?.B?.uid===uid)) { await enter(code); return; }
+    LS.set("code", null);
+  }
+}
+if ("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "TEG",
+  "short_name": "TEG",
+  "description": "TEG, el juego de la guerra, de 2 a 6 jugadores con objetivos secretos: online con código, contra la IA o en el mismo celular.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14202b",
+  "theme_color": "#14202b",
+  "icons": [
+    { "src": "icons/logo-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/logo-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/logo-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

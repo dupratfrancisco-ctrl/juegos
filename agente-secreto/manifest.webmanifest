@@ -1,0 +1,17 @@
+{
+  "name": "El Agente Secreto",
+  "short_name": "Agente Secreto",
+  "description": "El clásico juego de deducción de Ruibal, para jugar de a dos con cada uno en su celular.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d2140",
+  "theme_color": "#0d2140",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
