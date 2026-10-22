@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Póker</title>
-<meta name="description" content="Póker Texas Hold'em de 2 a 8 jugadores con fichas: online con código, contra la IA o en el mismo celular.">
+<meta name="description" content="Póker Texas Hold'em de 2 a 8 jugadores con pesos argentinos simulados: online con código, contra la IA o en el mismo celular.">
 <meta name="theme-color" content="#0d2b1d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -25,7 +25,7 @@ html{overflow-x:hidden}body{overflow-x:clip;max-width:100vw}
 button,a,input,[role=button]{touch-action:manipulation}
 input,textarea{font-size:max(16px,1em)}
 [hidden]{display:none!important}
-/* Layout: casino — paño verde con borde de madera, fichas y detalles dorados, cartas blancas clásicas. */
+/* Layout: casino — paño verde con borde de madera, billetes, fichas y detalles dorados, cartas blancas clásicas. */
 :root{
   --bg:#0d2b1d; --bg-2:#0a2016; --panel:#123826; --panel-2:#0e2e1f; --line:#2c6146;
   --felt:#1c7a4a; --felt-2:#14603a; --wood:#5b3418; --wood-2:#3d2210;
@@ -116,6 +116,9 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 .bet{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:4px;font-family:var(--f-head);font-weight:700;font-size:.82rem;background:rgba(0,0,0,.45);padding:1px 8px 1px 2px;border-radius:999px;z-index:2;animation:chipin .35s ease-out}
 @keyframes chipin{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}to{opacity:1}}
 .chip3{width:16px;height:16px;border-radius:50%;background:repeating-conic-gradient(var(--red) 0 30deg,#fff 30deg 60deg);box-shadow:inset 0 0 0 3px var(--red),0 1px 2px rgba(0,0,0,.5)}
+/* Billetes del pozo */
+.bill{display:inline-grid;place-items:center;width:26px;height:15px;border-radius:2px;background:linear-gradient(135deg,#6fbf73,#3e8e47);color:#103d16;font:700 10px/1 var(--f-head);box-shadow:inset 0 0 0 1.5px #2a6b31,0 1px 2px rgba(0,0,0,.5);position:relative}
+.bill::before{content:"";position:absolute;inset:-3px 3px 3px -3px;border-radius:2px;background:#58a85e;z-index:-1;box-shadow:inset 0 0 0 1.5px #2a6b31}
 
 /* Cartas */
 .card{--cw:44px;width:var(--cw);height:calc(var(--cw)*1.4);border-radius:calc(var(--cw)*.12);background:#fdfcf7;color:#1b1b1b;position:relative;box-shadow:0 2px 4px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.18);flex:0 0 auto;font-family:Georgia,"Times New Roman",serif;overflow:hidden}
@@ -138,6 +141,7 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 .mine .what{display:flex;flex-direction:column;gap:2px;min-width:0}
 .mine .what b{font-family:var(--f-head);font-size:1.15rem}
 .acts{display:flex;gap:8px;flex-wrap:wrap}.acts .btn{flex:1 1 90px}
+#foldb,#callb,#raiseb{white-space:nowrap;font-size:clamp(.85rem,3.6vw,1.08rem);padding-inline:8px}
 .raise{display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:var(--panel-2);border-radius:12px;box-shadow:inset 0 0 0 2px var(--gold)}
 .raise .top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 .raise .amt{font-family:var(--f-head);font-weight:700;font-size:1.6rem;color:var(--gold)}
@@ -233,7 +237,8 @@ function toast(msg, ms=3800){ const t=$("#toast"); t.textContent=msg; t.hidden=f
 function buzz(p=[60,40,60]){ try { navigator.vibrate && navigator.vibrate(p); } catch {} }
 const COLORS = ["#e53935","#1e88e5","#fdd835","#43a047","#8e24aa","#fb8c00","#00acc1","#f06292"];
 const colorOf = i => COLORS[i%8];
-const fmt = n => Number(n||0).toLocaleString("es-AR");
+// Todo se muestra en pesos argentinos simulados.
+const fmt = n => E.$m(n);
 
 /* ===== Red =====
    Las partidas viajan por un servidor MQTT público (sin cuentas). Cada partida es un tema con el
@@ -357,7 +362,7 @@ const S = {
   db:null, uid:null, status:"loading", net:"", netOk:false,
   nick: LS.get("nick") || "", level: LS.get("level") || "medio",
   nOnline: 4, nAI: 4, nLocal: 3, names: LS.get("names") || ["","","","","","","",""],
-  stack: LS.get("stack") || 1000, rising: LS.get("rising") ?? true,
+  stack: (LS.get("stack")||0) >= 20000 ? LS.get("stack") : 100000, rising: LS.get("rising") ?? true,
   code:null, game:null, unsub:null, activeSeat:null, joinCode:"", joinErr:"",
   raising:false, raiseTo:0, seenCards:new Set(), cardsHand:null,
 };
@@ -590,10 +595,10 @@ function render(force){
   document.querySelectorAll(".card[data-k]").forEach(c=>S.seenCards.add(c.dataset.k));
   updateChat();
 }
-const mast = () => `<header class="mast"><img class="logo" src="icons/logo-192.png" alt="" width="72" height="72"><div><h1 class="brand">Póker <span>♠<span class="r">♥</span>♣<span class="r">♦</span></span></h1><span class="label">Texas Hold'em</span></div></header>`;
+const mast = () => `<header class="mast"><img class="logo" src="icons/logo-192.png" alt="" width="72" height="72"><div><h1 class="brand">Póker <span>♠<span class="r">♥</span>♣<span class="r">♦</span></span></h1><span class="label">Texas Hold'em · pesos argentinos</span></div></header>`;
 const seg = (id, opts, cur) => `<div class="seg" role="group" aria-labelledby="${id}">${opts.map(([v,t])=>`<button type="button" data-${id}="${v}" aria-pressed="${String(cur)===String(v)}">${t}</button>`).join("")}</div>`;
 const NOPTS = [2,3,4,5,6,7,8].map(n=>[n,String(n)]);
-const SOPTS = [[500,"500"],[1000,"1.000"],[2000,"2.000"],[5000,"5.000"]];
+const SOPTS = [[20000,"$ 20.000"],[50000,"$ 50.000"],[100000,"$ 100.000"],[500000,"$ 500.000"]];
 const dotHTML = i => `<span class="dot" style="background:${colorOf(i)}"></span>`;
 const SUIT = ["♠","♥","♦","♣"];
 // Una carta: valor arriba a la izquierda y el palo grande abajo. "k" identifica la carta para animarla una sola vez.
@@ -618,8 +623,8 @@ function tableHTML(){
   // Cartas comunitarias y pozo
   const P = g.committed ? E.pot(g) : 0;
   h += `<div class="mid"><div class="board">${Array.from({length:5},(_,i)=>g.board?.[i]!=null ? cardHTML(g.board[i], {k:"b"+g.handNo+"-"+i, hi:end && bestCards.has(g.board[i]), dim:end && res?.showdown && !bestCards.has(g.board[i]), delay: g.board.length===3&&i<3 ? i*.12 : 0}) : cardHTML(null)).join("")}</div>
-    ${P||end?`<div class="potline"><span class="chip3"></span>${end&&res?`Pozo ${fmt(res.pots.reduce((a,p)=>a+p.amount,0))}`:`Pozo ${fmt(P)}`}</div>`:""}
-    <div class="muted" style="font-size:.75rem">Mano ${g.handNo} · ciegas ${fmt(g.sb)}/${fmt(g.bb)}</div></div>`;
+    ${P||end?`<div class="potline"><span class="bill">$</span>${end&&res?`Pozo ${fmt(res.pots.reduce((a,p)=>a+p.amount,0))}`:`Pozo ${fmt(P)}`}</div>`:""}
+    <div class="muted" style="font-size:.75rem">Mano ${g.handNo} · ciegas ${fmt(g.sb)} / ${fmt(g.bb)}</div></div>`;
   for (let i=0;i<g.n;i++){
     const p=seatPos(g,i,me), out=g.chips[i]<=0 && !(g.committed?.[i]>0) && !(res?.won?.[i]>0);
     const folded=g.folded?.[i] && !out, turn=g.stage==="bet" && g.toAct===i;
@@ -646,7 +651,7 @@ function statusHTML(){
   const street = {preflop:"Antes del flop", flop:"Flop", turn:"Turn", river:"River"}[g.street]||"";
   const info = `<span class="info">${esc(street)}</span>`;
   if (g.stage==="end") return `<section class="status"><h2>Fin de la mano ${g.handNo}</h2>${info}</section>`;
-  if (g.chips[me]<=0 && g.folded[me]) return `<section class="status"><h2>Te quedaste sin fichas</h2><span class="muted">Podés seguir mirando la partida.</span>${info}</section>`;
+  if (g.chips[me]<=0 && g.folded[me]) return `<section class="status"><h2>Te quedaste sin plata</h2><span class="muted">Podés seguir mirando la partida.</span>${info}</section>`;
   if (g.toAct===me) return `<section class="status me"><h2>Te toca</h2>${info}</section>`;
   return `<section class="status"><h2>${dotHTML(g.toAct)} Habla ${esc(nickOf(g.toAct))}</h2>${info}</section>`;
 }
@@ -660,7 +665,7 @@ function mineHTML(){
     what = cards.length>=5 ? E.handName(E.best(cards)) : E.rankOf(hole[0])===E.rankOf(hole[1]) ? `Par de mano` : `${E.RANK_NAME[Math.max(E.rankOf(hole[0]),E.rankOf(hole[1]))]} alta${E.suitOf(hole[0])===E.suitOf(hole[1])?" del mismo palo":""}`;
   }
   return `<div class="mine"><div class="cards">${hole.map((c,j)=>cardHTML(c,{k:"m"+g.handNo+"-"+j, dim:folded, delay:j*.15})).join("")||`<span class="muted">Sin cartas</span>`}</div>
-    <div class="what"><span class="label">${g.mode==="local"?esc(nickOf(me))+": tu mano":"Tu mano"}</span><b>${folded?"Te retiraste":esc(what)}</b><span class="muted">Fichas: <b style="color:var(--gold)">${fmt(g.chips[me])}</b>${g.committed?.[me]?` · en el pozo: ${fmt(g.committed[me])}`:""}</span></div></div>`;
+    <div class="what"><span class="label">${g.mode==="local"?esc(nickOf(me))+": tu mano":"Tu mano"}</span><b>${folded?"Te retiraste":esc(what)}</b><span class="muted">Tenés <b style="color:var(--gold)">${fmt(g.chips[me])}</b>${g.committed?.[me]?` · en el pozo: ${fmt(g.committed[me])}`:""}</span></div></div>`;
 }
 function actionsHTML(){
   const g=S.game, me=seat();
@@ -725,24 +730,24 @@ const VIEWS = {
     </section>
     <section class="panel">
       <span class="label">Para todas las partidas</span>
-      <div class="field"><span class="label" id="stk">Fichas para cada uno</span>${seg("stk", SOPTS, S.stack)}</div>
+      <div class="field"><span class="label" id="stk">Plata para cada uno</span>${seg("stk", SOPTS, S.stack)}</div>
       <div class="field"><span class="label" id="ris">Las ciegas suben cada 8 manos</span>${seg("ris", [["1","Sí"],["0","No"]], S.rising?"1":"0")}</div>
     </section>
     <details class="panel rules"><summary>Reglas</summary><ul>
       <li>Cada jugador recibe 2 cartas tapadas. En la mesa se dan 5 cartas comunitarias: primero 3 (flop), después 1 (turn) y al final 1 (river).</li>
       <li>Antes de repartir, los dos jugadores a la izquierda del que reparte (D) ponen la ciega chica y la grande.</li>
-      <li>En cada vuelta podés retirarte, pasar (si nadie apostó), igualar la apuesta o subirla. No hay límite: podés ir all-in con todas tus fichas.</li>
+      <li>En cada vuelta podés retirarte, pasar (si nadie apostó), igualar la apuesta o subirla. No hay límite: podés ir all-in con toda tu plata.</li>
       <li>Gana la mejor mano de 5 cartas entre tus 2 y las 5 de la mesa, o el último que queda sin retirarse.</li>
       <li>De mayor a menor: escalera de color, póker, full, color, escalera, trío, doble par, par y carta alta.</li>
-      <li>Si alguien va all-in con menos fichas, solo puede ganar lo que igualó; el resto se juega en un pozo lateral.</li>
-      <li>El que se queda sin fichas queda afuera. Gana el que se queda con todas.</li></ul></details>`,
+      <li>Si alguien va all-in con menos plata, solo puede ganar lo que igualó; el resto se juega en un pozo lateral.</li>
+      <li>El que se queda sin plata queda afuera. Gana el que se queda con toda.</li><li>La plata es de mentira: son pesos simulados para jugar, no se apuesta dinero real.</li></ul></details>`,
   full: () => `${mast()}<section class="panel"><h2>Esa partida ya está completa</h2><button class="btn" id="leave" type="button">Volver</button></section>`,
   lobby: () => {
     const g=S.game, host=isHost();
     return `${mast()}<section class="panel center"><span class="label">Código de la partida</span><div class="code" id="code">${esc(S.code)}</div>
       <p>Pasales este código: abren el Póker en su celular, escriben el código y tocan <b>Unirme</b>.</p>
       <button class="btn ghost small" id="copy" type="button">Copiar código</button></section>
-      <section class="panel"><span class="label">Jugadores (${g.seats.filter(Boolean).length} de ${g.n}) · ${fmt(g.stack)} fichas cada uno</span>
+      <section class="panel"><span class="label">Jugadores (${g.seats.filter(Boolean).length} de ${g.n}) · ${fmt(g.stack)} para cada uno</span>
       <ul class="seats">${g.seats.map((p,i)=>`<li>${dotHTML(i)}<span class="n">${p?esc(p.nick)+(p.bot?" 🤖":""):'<span class="muted">Esperando…</span>'}</span>${botLevelHTML(p,i,host)}${!p&&host?`<button class="btn ghost small" type="button" data-bot="${i}">Agregar IA</button>`:""}</li>`).join("")}</ul>
       ${host ? `${g.seats.some(p=>p?.bot)?`<p class="muted" style="font-size:.88rem">Elegí el nivel de cada IA al lado de su nombre.</p>`:""}
         <button class="btn" id="start" type="button"${g.seats.every(Boolean)?"":" disabled"}>Empezar</button>` : `<p class="muted">Esperando que ${esc(nickOf(0))} empiece la partida…</p>`}
@@ -766,7 +771,7 @@ const VIEWS = {
     const g=S.game, me=seat(), won=g.winner===me && g.mode!=="local";
     const order=[g.winner, ...[...(g.place||[])].reverse()].filter((v,i,a)=>v!=null && a.indexOf(v)===i);
     return `<section class="panel center"><h2 class="verdict">${won?"¡Ganaste!":`¡Ganó ${esc(nickOf(g.winner))}!`}</h2>
-      <p>Se quedó con las ${fmt(g.chips[g.winner])} fichas en ${g.handNo} manos.</p>
+      <p>Se quedó con ${fmt(g.chips[g.winner])} en ${g.handNo} manos.</p>
       <ol class="ranking">${order.map((i,k)=>`<li><b>${k+1}º</b>${dotHTML(i)}<span>${esc(nickOf(i))}</span></li>`).join("")}</ol>
       ${g.mode!=="online"||isHost()?`<button class="btn" id="again" type="button">Jugar otra vez</button>`:`<p class="muted">Esperando que ${esc(nickOf(0))} arme otra partida…</p>`}</section>
       ${logHTML()}<button class="btn ghost small" id="leave" type="button">Salir</button>`;

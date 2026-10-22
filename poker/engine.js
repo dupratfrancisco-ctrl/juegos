@@ -1,7 +1,7 @@
 /* Motor del póker (Texas Hold'em sin límite): manos, apuestas, pozos y la IA. Funciones puras sobre el estado.
    Cada jugador recibe 2 cartas; hay 5 cartas comunitarias (flop, turn y river) y cuatro vueltas de apuestas.
    Gana la mejor mano de 5 cartas entre las 7 disponibles, o el último que queda sin retirarse. Las ciegas suben
-   cada cierta cantidad de manos y la partida termina cuando un jugador se queda con todas las fichas. */
+   cada cierta cantidad de manos y la partida termina cuando un jugador se queda con toda la plata (pesos simulados). */
 (function (root) {
   const RANKS = "23456789TJQKA", SUITS = "shdc";      // picas, corazones, diamantes, tréboles
   const rankOf = c => c % 13, suitOf = c => Math.floor(c / 13);
@@ -11,6 +11,8 @@
   const BLINDS = [10, 15, 25, 40, 60, 100, 150, 250, 400, 600, 1000, 1500, 2500, 4000, 6000, 10000];
 
   const clone = o => JSON.parse(JSON.stringify(o));
+  // Pesos argentinos simulados: "$ 1.500" (no es plata de verdad).
+  const $m = n => "$\u00a0" + Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   function shuffle(a, rnd = Math.random) { for (let i = a.length - 1; i > 0; i--) { const k = Math.floor(rnd() * (i + 1)); [a[i], a[k]] = [a[k], a[i]]; } return a; }
   const nick = (g, s) => g.seats?.[s]?.nick || `Jugador ${s + 1}`;
   const log = (g, s, x) => { g.log = [...(g.log || []), { s, x }].slice(-60); };
@@ -76,7 +78,7 @@
   function setup(g, rnd = Math.random) {
     const stack = g.stack || 1000;
     g.chips = Array(g.n).fill(stack);
-    g.scale = stack / 1000;              // las ciegas acompañan a las fichas iniciales
+    g.scale = stack / 1000;              // las ciegas acompañan a la plata inicial
     g.handNo = 0; g.dealer = Math.floor(rnd() * g.n);
     g.phase = "play"; g.winner = null; g.log = []; g.place = [];
     return startHand(g, rnd);
@@ -94,7 +96,7 @@
     const { sb, bb, lvl } = blindsFor(g); g.sb = sb; g.bb = bb; g.lvl = lvl;
     g.deck = shuffle(Array.from({ length: 52 }, (_, i) => i), rnd);
     g.hole = Array.from({ length: g.n }, () => []);
-    g.folded = Array.from({ length: g.n }, (_, i) => g.chips[i] <= 0);   // los que ya no tienen fichas no juegan
+    g.folded = Array.from({ length: g.n }, (_, i) => g.chips[i] <= 0);   // los que ya no tienen plata no juegan
     g.allin = Array(g.n).fill(false);
     g.bets = Array(g.n).fill(0); g.committed = Array(g.n).fill(0);
     g.board = []; g.result = null; g.street = "preflop"; g.stage = "bet";
@@ -108,7 +110,7 @@
     g.currentBet = bb; g.minRaise = bb;
     g.pending = Array.from({ length: g.n }, (_, i) => !g.folded[i] && !g.allin[i]);
     g.toAct = nextFrom(g, g.bbSeat, i => g.pending[i]);
-    log(g, g.dealer, `reparte · mano ${g.handNo} · ciegas ${sb}/${bb}`);
+    log(g, g.dealer, `reparte · mano ${g.handNo} · ciegas ${$m(sb)} / ${$m(bb)}`);
     if (g.toAct < 0 || !canStillBet(g)) return endStreet(g, rnd);
     // Si solo queda uno que puede apostar y ya igualó, no hay nada que decidir.
     if (g.bets[g.toAct] >= g.currentBet && g.pending.filter(Boolean).length === 1 && liveCount(g) - allinCount(g) <= 1) return endStreet(g, rnd);
@@ -148,12 +150,12 @@
       log(g, s, "pasa");
     } else if (type === "call") {
       if (L.canCheck) { log(g, s, "pasa"); }
-      else { const v = put(g, s, L.toCall); log(g, s, g.allin[s] ? `va all-in con ${v}` : `iguala ${v}`); }
+      else { const v = put(g, s, L.toCall); log(g, s, g.allin[s] ? `va all-in con ${$m(v)}` : `iguala ${$m(v)}`); }
     } else if (type === "raise") {
       let to = Math.round(amount);
       if (to >= L.maxTo) to = L.maxTo;
       if (to <= g.currentBet) throw new Error("La suba tiene que superar la apuesta actual.");
-      if (to < L.minTo && to < L.maxTo) throw new Error(`La suba mínima es a ${L.minTo}.`);
+      if (to < L.minTo && to < L.maxTo) throw new Error(`La suba mínima es a ${$m(L.minTo)}.`);
       const prev = g.currentBet, opened = prev === 0;
       put(g, s, to - g.bets[s]);
       const inc = to - prev;
@@ -161,7 +163,7 @@
       g.currentBet = to;
       // Los demás que siguen en la mano vuelven a tener que hablar.
       for (let i = 0; i < g.n; i++) if (i !== s && !g.folded[i] && !g.allin[i]) g.pending[i] = true;
-      log(g, s, g.allin[s] ? `va all-in con ${to}` : opened ? `apuesta ${to}` : `sube a ${to}`);
+      log(g, s, g.allin[s] ? `va all-in con ${$m(to)}` : opened ? `apuesta ${$m(to)}` : `sube a ${$m(to)}`);
     } else throw new Error("Jugada desconocida.");
     g.pending[s] = false;
     return advance(g, s, rnd);
@@ -215,7 +217,7 @@
     const won = Array(g.n).fill(0);
     for (const p of pots) {
       const share = Math.floor(p.amount / p.winners.length); let rest = p.amount - share * p.winners.length;
-      // La ficha que sobra en un empate va al primero a la izquierda del que reparte.
+      // El peso que sobra en un empate va al primero a la izquierda del que reparte.
       const order = [...p.winners].sort((a, b) => ((a - g.dealer - 1 + g.n) % g.n) - ((b - g.dealer - 1 + g.n) % g.n));
       for (const w of order) { won[w] += share + (rest > 0 ? 1 : 0); if (rest > 0) rest--; }
     }
@@ -224,9 +226,9 @@
       showdown, won, pots: pots.map(p => ({ amount: p.amount, winners: p.winners })),
       hands: Object.fromEntries(Object.entries(hands).map(([i, h]) => [i, { name: handName(h), cards: h.cards, cat: h.cat }])),
     };
-    for (let i = 0; i < g.n; i++) if (won[i]) log(g, i, showdown ? `gana ${won[i]} con ${handName(hands[i])}` : `gana ${won[i]}`);
-    // Los que se quedaron sin fichas quedan afuera (se anota en qué puesto).
-    for (let i = 0; i < g.n; i++) if (g.chips[i] === 0 && g.committed[i] > 0 && !g.place.includes(i)) { g.place.push(i); log(g, i, "se quedó sin fichas"); }
+    for (let i = 0; i < g.n; i++) if (won[i]) log(g, i, showdown ? `gana ${$m(won[i])} con ${handName(hands[i])}` : `gana ${$m(won[i])}`);
+    // Los que se quedaron sin plata quedan afuera (se anota en qué puesto).
+    for (let i = 0; i < g.n; i++) if (g.chips[i] === 0 && g.committed[i] > 0 && !g.place.includes(i)) { g.place.push(i); log(g, i, "se quedó sin plata"); }
     g.stage = "end"; g.toAct = -1; g.pending = Array(g.n).fill(false);
     g.endedAt = (g.endedAt || 0) + 1;
     if (alive(g).length <= 1) { g.phase = "over"; g.winner = alive(g)[0]; g.stage = "over"; log(g, g.winner, "¡ganó la partida!"); }
@@ -302,7 +304,7 @@
     return fold();
   }
 
-  const api = { RANKS, SUITS, RANK_NAME, CAT_NAME, rankOf, suitOf, eval5, best, handName, setup, startHand, act, nextHand, legal, pot,
+  const api = { $m, RANKS, SUITS, RANK_NAME, CAT_NAME, rankOf, suitOf, eval5, best, handName, setup, startHand, act, nextHand, legal, pot,
     alive, botStep, equity, chen, clone, shuffle, blindsFor };
   if (typeof module !== "undefined") module.exports = api; else root.Poker = api;
 })(this);
