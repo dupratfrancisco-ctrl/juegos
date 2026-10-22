@@ -183,11 +183,12 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 }
 @media (min-width:900px) and (min-height:561px){
   /* Solo la partida (y el final, con el mapa) va en dos columnas; la sala y el inicio quedan centrados */
-  #app:is([data-sc="play"],[data-sc="over"]){max-width:1280px;display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);align-items:start}
-  #app:is([data-sc="play"],[data-sc="over"])>.wide{grid-column:1/-1}
-  #app:is([data-sc="play"],[data-sc="over"])>.mapcol{grid-column:1;grid-row:2 / span 6}
-  #app:is([data-sc="play"],[data-sc="over"])>*:not(.wide):not(.mapcol):not(.mast){grid-column:2}
-  .mapwrap{height:auto;aspect-ratio:1000/714;max-height:calc(100vh - 120px)}
+  /* El mapa ocupa todo el alto de la pantalla a la izquierda; jugadores y controles van a la derecha */
+  #app:is([data-sc="play"],[data-sc="over"]){max-width:none;display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,330px);align-items:start;column-gap:14px;padding-block:10px 40px}
+  #app:is([data-sc="play"],[data-sc="over"])>.mapcol{grid-column:1;grid-row:1 / span 9;position:sticky;top:10px}
+  #app:is([data-sc="play"],[data-sc="over"])>*:not(.mapcol){grid-column:2}
+  #app:is([data-sc="play"],[data-sc="over"])>#leave{grid-column:2}
+  .mapwrap{height:calc(100dvh - 20px);max-height:calc((100vw - 370px)*.714);min-height:420px;aspect-ratio:auto}
 }
 /* Compu y pantallas anchas: la pantalla de inicio en columnas */
 @media (min-width:980px) and (min-height:561px){
