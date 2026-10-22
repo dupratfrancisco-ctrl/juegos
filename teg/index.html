@@ -183,8 +183,13 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
   #app{max-width:1280px;display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);align-items:start}
   #app>.wide{grid-column:1/-1}
   #app>.mapcol{grid-column:1;grid-row:2 / span 6}
-  #app>*:not(.wide):not(.mapcol):not(.mast){grid-column:2}
+  #app:not([data-sc="home"])>*:not(.wide):not(.mapcol):not(.mast){grid-column:2}
   .mapwrap{height:auto;aspect-ratio:1000/714;max-height:calc(100vh - 120px)}
+}
+/* Compu y pantallas anchas: la pantalla de inicio en columnas */
+@media (min-width:980px) and (min-height:561px){
+  #app[data-sc="home"]{max-width:1240px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start;gap:16px}
+  #app[data-sc="home"]>.mast,#app[data-sc="home"]>details,#app[data-sc="home"]>.rules{grid-column:1/-1}
 }
 </style>
 </head>
@@ -727,7 +732,7 @@ function render(force){
   else if (me==null) sc="full";
   else sc=g.phase;
   if (sc==="home" && screen==="home" && !force){ updateChat(); return; }
-  const same = screen===sc; screen=sc;
+  const same = screen===sc; screen=sc; app.dataset.sc=sc;
   const paint = () => {
     app.innerHTML=(VIEWS[sc]||VIEWS.loading)();
     const slot=$("#mapslot");

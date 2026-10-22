@@ -208,6 +208,11 @@ html,body{overscroll-behavior:none}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:#071630;color:var(--fg);box-shadow:0 0 0 2px var(--brass);padding:12px 16px;border-radius:12px;max-width:min(560px,calc(100vw - 32px));font-size:.95rem}
 .center{text-align:center}
 .foot{font-size:.85rem;color:var(--muted);text-align:center}
+/* Compu y pantallas anchas: la pantalla de inicio en columnas */
+@media (min-width:980px) and (min-height:561px){
+  #app[data-sc="home"]{max-width:1240px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start;gap:16px}
+  #app[data-sc="home"]>.mast,#app[data-sc="home"]>details,#app[data-sc="home"]>.rules{grid-column:1/-1}
+}
 </style>
 
 </head>
@@ -887,6 +892,7 @@ function render(){
   else sc=g.phase;
   if (sc==="roundEnd"||sc==="over") sc="end";
   const key = sc + "|" + (g?.round||0) + (g?.local ? "|"+S.activeSeat+"|"+actorOf(g) : "");
+  app.dataset.sc=sc;
   if (key!==screen){ screen=key; actionsHTML=""; hidePeek(); app.innerHTML = VIEWS[sc] ? VIEWS[sc]() : ""; bind(sc); }
   if (sc==="play") updatePlay();
   else if (VIEWS[sc] && REFRESH[sc]) REFRESH[sc]();

@@ -1,7 +1,7 @@
 {
   "name": "Clue Springfield",
   "short_name": "Clue Springfield",
-  "description": "Clue en Springfield, con Los Simpson, para 3 a 6 jugadores: online con código, contra la IA o en el mismo celular.",
+  "description": "Clue en Springfield, con Los Simpson, para 2 a 6 jugadores: online con código, contra la IA o en el mismo celular.",
   "lang": "es",
   "start_url": "./",
   "scope": "./",

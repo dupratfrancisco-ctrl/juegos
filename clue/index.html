@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Clue Springfield</title>
-<meta name="description" content="Clue en Springfield, con Los Simpson: para 3 a 6 jugadores, online con código, contra la IA o en el mismo celular.">
+<meta name="description" content="Clue en Springfield, con Los Simpson: para 2 a 6 jugadores, online con código, contra la IA o en el mismo celular.">
 <meta name="theme-color" content="#1565c0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -165,6 +165,11 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 @media (min-width:900px) and (min-height:561px){
   #app{max-width:1100px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
   #app>.wide{grid-column:1/-1}
+}
+/* Compu y pantallas anchas: la pantalla de inicio en columnas */
+@media (min-width:980px) and (min-height:561px){
+  #app[data-sc="home"]{max-width:1240px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start;gap:16px}
+  #app[data-sc="home"]>.mast,#app[data-sc="home"]>details,#app[data-sc="home"]>.rules{grid-column:1/-1}
 }
 </style>
 </head>
@@ -559,14 +564,14 @@ function render(force){
   else if (me==null) sc="full";
   else sc=g.phase;
   if (sc==="home" && screen==="home" && !force){ updateChat(); return; }
-  const same = screen===sc; screen=sc;
+  const same = screen===sc; screen=sc; app.dataset.sc=sc;
   const paint = () => { app.innerHTML=(VIEWS[sc]||VIEWS.loading)(); bind(sc); };
   if (same && sc==="play") keepInPlace(".bd", paint); else { paint(); scrollTo(0,0); }
   updateChat();
 }
 const mast = () => `<header class="mast"><h1 class="brand">Clue <span>Springfield</span></h1><span class="label">¿Quién, con qué y dónde?</span></header>`;
 const seg = (id, opts, cur) => `<div class="seg" role="group" aria-labelledby="${id}">${opts.map(([v,t])=>`<button type="button" data-${id}="${v}" aria-pressed="${String(cur)===String(v)}">${t}</button>`).join("")}</div>`;
-const NOPTS = [[3,"3"],[4,"4"],[5,"5"],[6,"6"]];
+const NOPTS = [[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]];
 const dotHTML = i => `<span class="dot" style="background:${charOf(i).color}"></span>`;
 const cardHTML = (id, big) => `<span class="card ${big?"big":""}">${id[0]==="s"?dotHTML(+id.slice(1)):id[0]==="w"?WICON[id]:RICON[id]} ${esc(NAME[id])}</span>`;
 

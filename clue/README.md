@@ -1,6 +1,6 @@
 # Clue
 
-Clue para celulares, de 3 a 6 jugadores, con tablero y dado: online con código (vía un servidor
+Clue para celulares, de 2 a 6 jugadores, con tablero y dado: online con código (vía un servidor
 MQTT público), contra la IA o en el mismo celular. Página estática, sin servidor propio.
 
 - `engine.js`: tablero, reglas e IA (funciones puras; se pueden probar con Node).
