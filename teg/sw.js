@@ -1,5 +1,5 @@
 // Guarda la app para que abra rápido y sin señal; las partidas online igual necesitan internet.
-const CACHE = "teg-v10";
+const CACHE = "teg-v11";
 const SHELL = ["./", "index.html", "engine.js", "map.js", "board.jpg", "mqtt.min.js", "manifest.webmanifest", "icons/logo-180.png", "icons/logo-192.png", "icons/logo-512.png"];
 
 self.addEventListener("install", e => {

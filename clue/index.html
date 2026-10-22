@@ -93,12 +93,37 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 .shown{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 
 /* Tablero: pasillos de baldosas grises sobre fondo verde, habitaciones con marco amarillo y cartel ovalado */
-.bd{container-type:inline-size;display:grid;grid-template-columns:repeat(24,minmax(0,1fr));grid-template-rows:repeat(25,minmax(0,1fr));gap:1px;aspect-ratio:24/25;width:100%;max-width:min(100%,calc((100dvh - 120px)*.96));margin-inline:auto;background:#7d8a7f;padding:2.2%;border-radius:10px;box-shadow:inset 0 0 0 9px #1f5a2c,0 0 0 3px #123d1c;touch-action:none;-webkit-user-select:none;user-select:none;position:relative}
-.bd *{touch-action:none}
+.boardcol{position:relative}
+.bdwrap{position:relative;width:100%;max-width:min(100%,calc((100dvh - 120px)*.96));aspect-ratio:24/25;margin-inline:auto;overflow:hidden;border-radius:10px;touch-action:none;overscroll-behavior:contain}
+.bdwrap.zoomed{overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
+.bdwrap.zoomed .bd,.bdwrap.zoomed .bd *{touch-action:pan-x pan-y}
+.boardcol .zoom{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px;z-index:5}
+.boardcol .zoom button{width:38px;height:38px;border-radius:10px;background:rgba(15,40,25,.85);color:#fff;font-size:1.3rem;font-weight:700;box-shadow:inset 0 0 0 2px #f2b705,0 2px 6px rgba(0,0,0,.4)}
+.boardcol .zoom button.all{font-size:.68rem;font-family:var(--f-head);letter-spacing:.04em}
+.bd{container-type:inline-size;display:grid;grid-template-columns:repeat(24,minmax(0,1fr));grid-template-rows:repeat(25,minmax(0,1fr));gap:1px;aspect-ratio:24/25;width:calc(var(--z,1)*100%);max-width:none;background:#7d8a7f;padding:2.2%;border-radius:10px;box-shadow:inset 0 0 0 9px #1f5a2c,0 0 0 3px #123d1c;touch-action:none;-webkit-user-select:none;user-select:none;position:relative}
+.bdwrap:not(.zoomed) .bd *{touch-action:none}
 .hc{background:#e9e9e4;border-radius:1px;padding:0;position:relative;display:grid;place-items:center;min-width:0;min-height:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.6)}
-.hc.door{background:#f6e7a8}
-.hc.start{background:var(--sc)}
-.hc.start::before{content:"";position:absolute;inset:12%;border-radius:50%;border:2px solid rgba(0,0,0,.45)}
+/* Puertas: casilla naranja con flecha hacia la habitación */
+.hc.door{background:#ff9f1c;box-shadow:inset 0 0 0 1.5px #b85f00}
+.hc .arw{position:absolute;inset:0;display:grid;place-items:center;transform:rotate(var(--rot));pointer-events:none}
+.hc .arw::before{content:"";width:55%;height:55%;background:#5a2a00;clip-path:polygon(50% 8%,95% 75%,5% 75%)}
+.hc.reach.door{background:#7fd6a5;box-shadow:inset 0 0 0 2px #ff9f1c}
+/* Salidas: medialuna del color del personaje, pegada al borde del tablero */
+.hc.start{background:color-mix(in srgb,var(--sc) 30%,#e9e9e4);overflow:visible;z-index:2}
+.hc.start::before{content:"";position:absolute;background:var(--sc);border:1.5px solid rgba(0,0,0,.5);z-index:-1}
+.hc.s-top::before{width:130%;height:62%;left:-15%;bottom:100%;border-radius:999px 999px 0 0;border-bottom:0}
+.hc.s-bottom::before{width:130%;height:62%;left:-15%;top:100%;border-radius:0 0 999px 999px;border-top:0}
+.hc.s-left::before{width:62%;height:130%;top:-15%;right:100%;border-radius:999px 0 0 999px;border-right:0}
+.hc.s-right::before{width:62%;height:130%;top:-15%;left:100%;border-radius:0 999px 999px 0;border-left:0}
+/* Dado */
+.dice{display:flex;align-items:center;gap:12px}
+.die{display:inline-grid;grid-template:repeat(3,1fr)/repeat(3,1fr);width:46px;height:46px;padding:7px;border-radius:10px;background:#fff;flex:0 0 auto;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18),inset 0 0 0 2px rgba(0,0,0,.25),0 3px 6px rgba(0,0,0,.35)}
+.die i{width:8px;height:8px;border-radius:50%;place-self:center}
+.die i.on{background:#1d2430}
+.die.spin{animation:tumble .32s linear infinite}
+.die.land{animation:land .55s cubic-bezier(.2,.8,.3,1.2) both}
+@keyframes tumble{0%{transform:rotate(0) translateY(0)}25%{transform:rotate(90deg) translateY(-6px)}50%{transform:rotate(180deg)}75%{transform:rotate(270deg) translateY(-6px)}100%{transform:rotate(360deg)}}
+@keyframes land{0%{transform:scale(.3) rotate(-220deg);opacity:0}70%{transform:scale(1.15) rotate(12deg);opacity:1}100%{transform:scale(1) rotate(0)}}
 .hc.reach{background:#7fd6a5;box-shadow:inset 0 0 0 1px #2e8a58;cursor:pointer}
 .tok{width:82%;height:82%;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.6),inset 0 0 0 2px rgba(0,0,0,.35);position:relative;z-index:1}
 .tok.me{box-shadow:0 0 0 2px var(--brass),0 1px 2px rgba(0,0,0,.6)}
@@ -159,18 +184,25 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
   #app{max-width:none;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;column-gap:12px;padding-block:8px 80px}
   #app>.boardcol{grid-column:1;grid-row:1 / span 8;position:sticky;top:8px}
   #app>*:not(.boardcol){grid-column:2}
-  .bd{width:calc(100dvh - 16px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));max-width:none}
+  .bdwrap{width:calc((100dvh - 16px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))*.96);max-width:none}
   .status{min-height:0}
 }
 @media (min-width:900px) and (min-height:561px){
-  #app{max-width:1100px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  #app{max-width:1500px;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,1fr);align-items:start;column-gap:16px}
   #app>.wide{grid-column:1/-1}
+  #app[data-sc="play"]>.boardcol{grid-column:1;grid-row:2 / span 6;position:sticky;top:10px}
+  #app[data-sc="play"]>*:not(.wide):not(.boardcol){grid-column:2}
+  .bdwrap{max-width:min(100%,calc((100dvh - 70px)*.96))}
 }
 /* Compu y pantallas anchas: la pantalla de inicio en columnas */
 @media (min-width:980px) and (min-height:561px){
   #app[data-sc="home"]{max-width:1240px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start;gap:16px}
   #app[data-sc="home"]>.mast,#app[data-sc="home"]>details,#app[data-sc="home"]>.rules{grid-column:1/-1}
 }
+.seats li{flex-wrap:wrap}
+.blv{display:inline-flex;gap:3px}
+.blv button{font-family:var(--f-head);font-weight:700;font-size:.8rem;padding:5px 8px;border-radius:8px;background:rgba(0,0,0,.25);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25)}
+.blv button[aria-pressed=true]{background:#fff;color:#1d2430;box-shadow:none}
 </style>
 </head>
 <body>
@@ -455,6 +487,13 @@ let botT, lastBuzz="";
 function onGame(){
   const g=S.game, me=seat();
   if (g.mode==="local" && g.phase!=="play" && S.activeSeat==null) S.activeSeat=0;
+  // Si se mostró sola una carta mía (tenía una sola), aviso cuál fue; solo en mi pantalla.
+  const ns=(g.sugs||[]).length, key=S.code+":"+g.created;
+  if (S.sugKey===key && ns>S.sugN && g.mode!=="local"){
+    const sg=g.sugs[ns-1];
+    if (sg.shownBy===me && sg.by!==me) toast(`Le mostraste ${NAME[sg.card]} a ${nickOf(sg.by)}.`, 4500);
+  }
+  S.sugKey=key; S.sugN=ns;
   if (g.phase==="play" && me!=null && g.mode==="online"){
     const k = (g.turn===me && g.step==="roll") ? "t"+(g.log||[]).length : (g.pending?.wait && g.pending.order[g.pending.i]===me) ? "s"+(g.log||[]).length : "";
     if (k && k!==lastBuzz){ lastBuzz=k; buzz([60]); }
@@ -470,7 +509,7 @@ function runBots(){
   const rev=g.rev, d = g.step==="move" ? 900 : g.step==="end" ? 1300 : 800;
   botT = setTimeout(() => {
     const cur=S.game; if (!cur || cur.rev!==rev) return;
-    try { save(E.botStep(cur, cur.turn, cur.level || "medio")); }
+    try { save(E.botStep(cur, cur.turn, cur.seats[cur.turn]?.level || cur.level || "medio")); }
     catch(e){ console.error(e); try { save(E.endTurn({...cur, step:"end"}, cur.turn)); } catch {} }
   }, d + Math.random()*400);
 }
@@ -479,14 +518,31 @@ const actorOf = g => g.phase!=="play" ? null : (g.pending?.wait ? g.pending.orde
 
 /* ===== Jugadas ===== */
 const botPick = (g,d,m) => E.botShow(g,d,m);
-function doRoll(){ act((g,me)=>E.rollDie(g,me)); }
+// Tirar el dado: gira un momento y después se juega la tirada de verdad.
+const PIPS = {1:[5],2:[3,7],3:[3,5,7],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
+const dieHTML = (v, cls="") => `<span class="die ${cls}">${Array.from({length:9},(_,i)=>`<i${PIPS[v].includes(i+1)?' class="on"':""}></i>`).join("")}</span>`;
+let rollT;
+function doRoll(){
+  if (S.rolling) return;
+  S.rolling = true; render(true); buzz([25]);
+  clearInterval(rollT);
+  rollT = setInterval(()=>{ const d=document.querySelector(".die.spin"); if (d) d.outerHTML = dieHTML(1+Math.floor(Math.random()*6), "spin"); }, 80);
+  setTimeout(()=>{ clearInterval(rollT); S.rolling=false; S.seenRoll=null; act((g,me)=>E.rollDie(g,me)); }, 750);
+}
 function doMove(dest){ act((g,me)=>E.moveTo(g,me,dest)); }
 function doSuggest(){
   if (!S.sugS || !S.sugW){ toast("Elegí un sospechoso y un arma."); return; }
   if (act((g,me)=>E.suggest(g,me,S.sugS,S.sugW,botPick))){ S.sugS=null; S.sugW=null; }
 }
 function startGame(){ const g=S.game; if (g.seats.some(p=>!p)){ toast("Faltan jugadores. Esperá a que se unan o agregá una IA."); return; } save(E.setup(E.clone({...g, level:S.level}))); }
-function addBot(i){ const g=S.game, seats=g.seats.slice(); seats[i]={bot:true, nick:`IA ${seats.filter(p=>p?.bot).length+1}`}; save({...g, seats, level:S.level}); }
+// Nivel de cada IA de la sala: el anfitrión lo elige al lado de su nombre y todos lo ven.
+const LVNAME = {facil:"Fácil", medio:"Medio", dificil:"Difícil"};
+const botLevelHTML = (p, i, host) => !p?.bot ? "" : host
+  ? `<span class="blv" role="group" aria-label="Nivel de ${esc(p.nick)}">${Object.entries(LVNAME).map(([v,t])=>`<button type="button" data-blv="${i}:${v}" aria-pressed="${(p.level||"medio")===v}">${t}</button>`).join("")}</span><button type="button" class="linkbtn" data-unbot="${i}" aria-label="Quitar ${esc(p.nick)}">✕</button>`
+  : `<span class="muted">${LVNAME[p.level||"medio"]}</span>`;
+function setBotLevel(i, lv){ const g=S.game, seats=g.seats.slice(); seats[i]={...seats[i], level:lv}; S.level=lv; LS.set("level",lv); save({...g, seats}); }
+function removeBot(i){ const g=S.game, seats=g.seats.slice(); seats[i]=null; save({...g, seats}); }
+function addBot(i){ const g=S.game, seats=g.seats.slice(); seats[i]={bot:true, nick:`IA ${seats.filter(p=>p?.bot).length+1}`, level:S.level}; save({...g, seats, level:S.level}); }
 function rematch(){ save(E.setup(E.clone(S.game))); S.activeSeat = S.game.mode==="local" ? null : S.activeSeat; }
 function takePhone(){ S.activeSeat = actorOf(S.game); render(true); scrollTo(0,0); }
 
@@ -566,7 +622,8 @@ function render(force){
   if (sc==="home" && screen==="home" && !force){ updateChat(); return; }
   const same = screen===sc; screen=sc; app.dataset.sc=sc;
   const paint = () => { app.innerHTML=(VIEWS[sc]||VIEWS.loading)(); bind(sc); };
-  if (same && sc==="play") keepInPlace(".bd", paint); else { paint(); scrollTo(0,0); }
+  if (same && sc==="play") keepInPlace("#boardcol", paint); else { paint(); scrollTo(0,0); }
+  if (g?.step==="move" && g.turn===me && S.seenRoll==null) setTimeout(()=>{ if (S.game?.step==="move") S.seenRoll=S.game.rev; }, 700);
   updateChat();
 }
 const mast = () => `<header class="mast"><h1 class="brand">Clue <span>Springfield</span></h1><span class="label">¿Quién, con qué y dónde?</span></header>`;
@@ -583,15 +640,20 @@ function boardHTML(){
   const g=S.game, me=seat(), myTurn=g.turn===me && g.phase==="play";
   const reach = myTurn && g.step==="move" ? E.reachable(g, me, g.roll) : {cells:[], rooms:[]};
   const rc = new Set(reach.cells), rr = new Set(reach.rooms);
-  const doorSet = new Set(E.DOORS.map(d=>d[1]+","+d[2]));
+  // Puertas: cada una con una flecha que apunta a la habitación a la que entra.
+  const doorDir = new Map();
+  for (const [rid,x,y] of E.DOORS){ const d=[[1,0,90],[-1,0,270],[0,1,180],[0,-1,0]].find(([dx,dy])=>E.cellKind(x+dx,y+dy)===rid); if (d && !doorDir.has(x+","+y)) doorDir.set(x+","+y, {rot:d[2], rid}); }
+  const doorSet = new Set(doorDir.keys());
+  // Salidas: la medialuna sale hacia el borde más cercano del tablero.
+  const side = (x,y) => y===0?"top":y===E.NY-1?"bottom":x===0?"left":"right";
   const startAt = new Map(E.STARTS.map((s,i)=>[s[0]+","+s[1], i]));
   const tokAt = new Map(); g.tok.forEach((t,i)=>{ if (!t.room) tokAt.set(t.x+","+t.y, i); });
-  let h = `<div class="bd" role="grid" aria-label="Tablero de Springfield">`;
+  let h = `<div class="bdwrap" id="bdwrap"><div class="bd" role="grid" aria-label="Tablero de Springfield" style="--z:${S.zoom||1}">`;
   for (let y=0;y<E.NY;y++) for (let x=0;x<E.NX;x++){
     if (E.cellKind(x,y)!=="hall") continue;
     const k=x+","+y, ti=tokAt.get(k), si=startAt.get(k);
-    const cls=["hc"]; if (doorSet.has(k)) cls.push("door"); if (si!=null) cls.push("start"); if (rc.has(k)) cls.push("reach");
-    h += `<button type="button" class="${cls.join(" ")}" style="grid-column:${x+1};grid-row:${y+1};${si!=null?`--sc:${charOf(si).color}`:""}" data-x="${x}" data-y="${y}" aria-label="Pasillo ${x+1}, ${y+1}"${rc.has(k)?"":" tabindex=\"-1\""}>${ti!=null?`<span class="tok ${ti===me?"me":""}" style="background:${charOf(ti).color}"></span>`:""}</button>`;
+    const cls=["hc"]; if (doorSet.has(k)) cls.push("door"); if (si!=null) cls.push("start","s-"+side(x,y)); if (rc.has(k)) cls.push("reach");
+    h += `<button type="button" class="${cls.join(" ")}" style="grid-column:${x+1};grid-row:${y+1};${si!=null?`--sc:${charOf(si).color}`:""}" data-x="${x}" data-y="${y}" aria-label="${doorSet.has(k)?`Puerta de ${esc(NAME[doorDir.get(k).rid])}`:si!=null?`Salida de ${esc(charOf(si).short)}`:`Pasillo ${x+1}, ${y+1}`}"${rc.has(k)?"":" tabindex=\"-1\""}>${doorSet.has(k)?`<i class="arw" style="--rot:${doorDir.get(k).rot}deg"></i>`:""}${ti!=null?`<span class="tok ${ti===me?"me":""}" style="background:${charOf(ti).color}"></span>`:""}</button>`;
   }
   for (const R of E.ROOMS){
     const [x0,y0,x1,y1]=R.r, here=E.roomOf(g.tok[me])===R.id;
@@ -608,7 +670,7 @@ function boardHTML(){
   }
   const [cx0,cy0,cx1,cy1]=E.CENTER;
   h += `<div class="ctr" style="grid-column:${cx0+1}/${cx1+2};grid-row:${cy0+1}/${cy1+2}"><span class="cl">Clue</span><span class="sp">Springfield</span><span class="dn">🍩</span></div>`;
-  return h+`</div>`;
+  return h+`</div></div><div class="zoom"><button type="button" data-z="in" aria-label="Acercar">+</button><button type="button" data-z="out" aria-label="Alejar">−</button><button type="button" data-z="1" class="all" aria-label="Ver todo el tablero">TODO</button></div>`;
 }
 function statusHTML(){
   const g=S.game, me=seat(), p=g.pending, last=(g.log||[]).slice(-1)[0];
@@ -627,12 +689,13 @@ function statusHTML(){
   if (g.step==="roll"){
     const pass = here && E.PASSAGES[here];
     return `<section class="status me"><h2>Tu turno</h2>${g.moved[me]&&here?`<p>Te trajeron a ${esc(NAME[here])}: podés sugerir acá sin moverte.</p>`:`<p>Tirá el dado para moverte por Springfield.</p>`}
-      <div class="acts"><button class="btn" id="rollb" type="button">Tirar dado 🎲</button>
+      ${S.rolling?`<div class="dice">${dieHTML(1+Math.floor(Math.random()*6),"spin")}<span class="muted">Tirando…</span></div>`:""}
+      <div class="acts"><button class="btn" id="rollb" type="button"${S.rolling?" disabled":""}>Tirar dado 🎲</button>
       ${pass?`<button class="btn ghost" id="passb" type="button">Pasadizo a ${esc(NAME[pass])}</button>`:""}
       ${g.moved[me]&&here?`<button class="btn ghost" id="stayb" type="button">Sugerir acá</button>`:""}
       <button class="btn danger" id="accb" type="button">Acusar</button></div></section>`;
   }
-  if (g.step==="move") return `<section class="status me"><h2>Sacaste un ${g.roll}</h2><p>Tocá una casilla verde o una habitación con borde verde. Al entrar a una habitación podés sugerir.</p></section>`;
+  if (g.step==="move") return `<section class="status me"><div class="dice">${dieHTML(g.roll, S.seenRoll===g.rev?"":"land")}<h2>Sacaste un ${g.roll}</h2></div><p>Tocá una casilla verde o una habitación con borde verde. Al entrar a una habitación podés sugerir.</p></section>`;
   if (g.step==="suggest"){
     return `<section class="status me"><h2>Sugerencia en ${esc(NAME[here])}</h2>
       <span class="label">¿Quién?</span><div class="chips">${E.SUSPECTS.map((c,i)=>`<button type="button" class="chip" data-ss="${c.id}" aria-pressed="${S.sugS===c.id}">${dotHTML(i)}${esc(c.short)}</button>`).join("")}</div>
@@ -648,7 +711,10 @@ function statusHTML(){
 function histHTML(){
   const g=S.game, me=seat();
   const items = g.sugs.slice().reverse().map(sg=>{
-    const who = sg.shownBy==null ? "nadie pudo mostrar" : `${esc(nickOf(sg.shownBy))} mostró ${sg.by===me?`<b>${esc(NAME[sg.card])}</b>`:"una carta"}`;
+    // La carta mostrada solo la ven el que sugirió y el que la mostró.
+    const who = sg.shownBy==null ? "nadie pudo mostrar"
+      : sg.shownBy===me ? `vos le mostraste <b>${esc(NAME[sg.card])}</b>`
+      : `${esc(nickOf(sg.shownBy))} mostró ${sg.by===me?`<b>${esc(NAME[sg.card])}</b>`:"una carta"}`;
     return `<li><b>${esc(nickOf(sg.by))}</b>: ${esc(E.SUSPECTS.find(s=>s.id===sg.s).short)}, ${esc(NAME[sg.w])}, ${esc(NAME[sg.r])} — ${who}${sg.passed.length?` <span class="muted">(no tenían: ${sg.passed.map(x=>esc(nickOf(x))).join(", ")})</span>`:""}</li>`;
   }).join("");
   return `<section class="panel hist"><span class="label">Sugerencias</span><ol>${items||`<li class="muted">Todavía no hubo sugerencias.</li>`}</ol></section>`;
@@ -694,8 +760,8 @@ const VIEWS = {
       <p>Pasales este código: abren Clue Springfield en su celular, escriben el código y tocan <b>Unirme</b>.</p>
       <button class="btn ghost small" id="copy" type="button">Copiar código</button></section>
       <section class="panel"><span class="label">Jugadores (${g.seats.filter(Boolean).length} de ${g.n})</span>
-      <ul class="seats">${g.seats.map((p,i)=>`<li>${dotHTML(i)}<span class="n">${p?esc(p.nick)+(p.bot?" 🤖":""):'<span class="muted">Esperando…</span>'} <span class="muted">· ${esc(charOf(i).short)}</span></span>${!p&&host?`<button class="btn ghost small" type="button" data-bot="${i}">Agregar IA</button>`:""}</li>`).join("")}</ul>
-      ${host ? `<div class="field"><span class="label" id="lvl">Nivel de las IA</span>${seg("lvl", [["facil","Fácil"],["medio","Medio"],["dificil","Difícil"]], S.level)}</div>
+      <ul class="seats">${g.seats.map((p,i)=>`<li>${dotHTML(i)}<span class="n">${p?esc(p.nick)+(p.bot?" 🤖":""):'<span class="muted">Esperando…</span>'} <span class="muted">· ${esc(charOf(i).short)}</span></span>${botLevelHTML(p,i,host)}${!p&&host?`<button class="btn ghost small" type="button" data-bot="${i}">Agregar IA</button>`:""}</li>`).join("")}</ul>
+      ${host ? `${g.seats.some(p=>p?.bot)?`<p class="muted" style="font-size:.88rem">Elegí el nivel de cada IA al lado de su nombre.</p>`:""}
         <button class="btn" id="start" type="button"${g.seats.every(Boolean)?"":" disabled"}>Empezar</button>` : `<p class="muted">Esperando que ${esc(nickOf(0))} empiece la partida…</p>`}
       </section><button class="btn ghost small" id="leave" type="button">Salir</button>`;
   },
@@ -711,7 +777,7 @@ const VIEWS = {
     const g=S.game, me=seat();
     return `${playersHTML()}
       <div>${statusHTML()}</div>
-      <div class="boardcol">${boardHTML()}</div>
+      <div class="boardcol" id="boardcol">${boardHTML()}</div>
       <section class="panel"><span class="label">${g.mode==="local"?esc(nickOf(me))+": tus cartas":"Tus cartas"}${g.out[me]?" · quedaste afuera, pero seguís mostrando":""}</span><div class="chips">${g.hands[me].map(c=>cardHTML(c)).join("")}</div></section>
       ${notebookHTML()}
       ${histHTML()}
@@ -740,6 +806,28 @@ function openAccuse(){
   $("#accx").onclick=closeModal;
   $("#accgo").onclick=()=>{ const {s,w,r}=S.acc; closeModal(); S.acc={s:null,w:null,r:null}; act((g,me)=>E.accuse(g,me,s,w,r)); };
 }
+/* Zoom del tablero: botones + / − / TODO y pellizco con dos dedos; con zoom se mueve arrastrando. */
+const ZMIN=1, ZMAX=3.2;
+function applyZoom(z, fx=.5, fy=.5){
+  const w=$("#bdwrap"), bd=w?.querySelector(".bd"); if (!bd) return;
+  z=Math.max(ZMIN, Math.min(ZMAX, z));
+  const old=S.zoom||1, px=(w.scrollLeft+w.clientWidth*fx)/(bd.offsetWidth||1), py=(w.scrollTop+w.clientHeight*fy)/(bd.offsetHeight||1);
+  S.zoom=z; bd.style.setProperty("--z", z); w.classList.toggle("zoomed", z>1.01);
+  w.scrollLeft = px*bd.offsetWidth - w.clientWidth*fx; w.scrollTop = py*bd.offsetHeight - w.clientHeight*fy;
+  S.bsx=w.scrollLeft; S.bsy=w.scrollTop;
+}
+function bindZoom(){
+  const w=$("#bdwrap"); if (!w) return;
+  w.classList.toggle("zoomed", (S.zoom||1)>1.01);
+  if (S.bsx!=null){ w.scrollLeft=S.bsx; w.scrollTop=S.bsy; }
+  w.onscroll=()=>{ S.bsx=w.scrollLeft; S.bsy=w.scrollTop; };
+  document.querySelectorAll("[data-z]").forEach(b=>b.onclick=()=>{ const z=b.dataset.z; applyZoom(z==="in"?(S.zoom||1)*1.4:z==="out"?(S.zoom||1)/1.4:1); });
+  let pinch=null;
+  w.addEventListener("touchstart", e=>{ if (e.touches.length===2){ const [a,b]=e.touches, r=w.getBoundingClientRect(); pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY), z:S.zoom||1, fx:((a.clientX+b.clientX)/2-r.left)/r.width, fy:((a.clientY+b.clientY)/2-r.top)/r.height}; e.preventDefault(); } }, {passive:false});
+  w.addEventListener("touchmove", e=>{ if (pinch && e.touches.length===2){ const [a,b]=e.touches; applyZoom(pinch.z*Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)/pinch.d, pinch.fx, pinch.fy); e.preventDefault(); } }, {passive:false});
+  w.addEventListener("touchend", e=>{ if (e.touches.length<2) pinch=null; });
+  w.addEventListener("wheel", e=>{ if (!e.ctrlKey && !e.metaKey && (S.zoom||1)<=1.01 && e.deltaY>0) return; if (e.ctrlKey||e.metaKey){ e.preventDefault(); const r=w.getBoundingClientRect(); applyZoom((S.zoom||1)*(e.deltaY<0?1.12:1/1.12), (e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height); } }, {passive:false});
+}
 function closeModal(){ const m=$("#modal"); if (m){ m.hidden=true; m.innerHTML=""; } updateChat(); }
 
 function bind(sc){
@@ -758,7 +846,9 @@ function bind(sc){
   if (sc==="lobby"){
     on("#copy", async()=>{ try { await navigator.clipboard.writeText(S.code); toast("Código copiado."); } catch { toast("Copiá el código a mano: "+S.code); } });
     document.querySelectorAll("[data-bot]").forEach(b=>b.onclick=()=>addBot(+b.dataset.bot));
-    segs("lvl", v=>{ S.level=v; LS.set("level",v); }); on("#start", startGame);
+    document.querySelectorAll("[data-blv]").forEach(b=>b.onclick=()=>{ const [i,lv]=b.dataset.blv.split(":"); setBotLevel(+i, lv); });
+    document.querySelectorAll("[data-unbot]").forEach(b=>b.onclick=()=>removeBot(+b.dataset.unbot));
+    on("#start", startGame);
   }
   if (sc==="handoff") on("#take", takePhone);
   if (sc==="play"){
@@ -770,6 +860,7 @@ function bind(sc){
     document.querySelectorAll("[data-show]").forEach(b=>b.onclick=()=>act((g,me)=>E.showCard(g,me,b.dataset.show)));
     document.querySelectorAll("[data-note]").forEach(b=>b.onclick=()=>cycleNote(b.dataset.note));
     const nb=$("#nbp"); if (nb) nb.ontoggle=()=>LS.set("nbopen", nb.open);
+    bindZoom();
     const bd=$(".bd");
     bd.onclick=e=>{
       const c=e.target.closest(".hc.reach"); if (c){ doMove({x:+c.dataset.x, y:+c.dataset.y}); return; }
