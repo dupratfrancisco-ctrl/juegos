@@ -3,7 +3,8 @@
 Juegos para el celular, cada uno en su carpeta y publicados con GitHub Pages:
 
 - `teg/` — T.E.G., de 2 a 6 jugadores, con objetivos secretos.
-- `clue/` — Clue Springfield, de 3 a 6 jugadores.
+- `poker/` — Póker Texas Hold'em, de 2 a 8 jugadores.
+- `clue/` — Clue Springfield, de 2 a 6 jugadores.
 - `burako/` — Burako, de 2 a 4 jugadores.
 - `batalla-naval/` — Batalla Naval, para 2.
 - `agente-secreto/` — El Agente Secreto, para 2.

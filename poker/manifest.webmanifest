@@ -1,0 +1,17 @@
+{
+  "name": "Póker",
+  "short_name": "Póker",
+  "description": "Póker Texas Hold'em de 2 a 8 jugadores con fichas: online con código, contra la IA o en el mismo celular.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d2b1d",
+  "theme_color": "#0d2b1d",
+  "icons": [
+    { "src": "icons/logo-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/logo-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/logo-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
