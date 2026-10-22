@@ -20,7 +20,9 @@
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
 /* Pantalla fija: sin zoom por doble toque ni por pellizco */
-html,body{touch-action:pan-x pan-y}
+/* La página solo se mueve para arriba y abajo: de costado queda fija */
+html,body{touch-action:pan-y;overscroll-behavior:none}
+html{overflow-x:hidden}body{overflow-x:clip;max-width:100vw}
 button,a,input,[role=button]{touch-action:manipulation}
 input,textarea{font-size:max(16px,1em)}
 img{max-width:100%}
@@ -104,7 +106,7 @@ input[type=text]::placeholder{color:#7389a8}
 .qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-height:250px;overflow-y:auto;padding:2px 2px 10px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;-webkit-mask-image:linear-gradient(#000 85%,transparent);mask-image:linear-gradient(#000 85%,transparent)}
 .qbtn{background:var(--desk-3);color:var(--fg);font-size:.92rem;line-height:1.25;padding:10px;border-radius:10px;text-align:left}
 .qbtn:disabled{opacity:.35;text-decoration:line-through}
-.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:4px}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:0 0 auto;background:var(--desk-3);color:var(--fg);font-size:.92rem;padding:8px 12px;border-radius:999px}
 .ask{display:flex;gap:8px}
@@ -213,6 +215,8 @@ html,body{overscroll-behavior:none}
   #app[data-sc="home"]{max-width:1240px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start;gap:16px}
   #app[data-sc="home"]>.mast,#app[data-sc="home"]>details,#app[data-sc="home"]>.rules{grid-column:1/-1}
 }
+/* Sala de espera, pasar el celular y avisos: una columna centrada, igual en todos los juegos */
+#app:is([data-sc="lobby"],[data-sc="full"],[data-sc="handoff"],[data-sc="loading"],[data-sc="cover"]){max-width:640px;margin-inline:auto}
 </style>
 
 </head>

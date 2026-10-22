@@ -20,7 +20,9 @@
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;-webkit-text-size-adjust:100%;overscroll-behavior:none}
 /* Pantalla fija: sin zoom por doble toque ni por pellizco (el mapa tiene su propio zoom) */
-html,body{touch-action:pan-x pan-y;overscroll-behavior:none}
+/* La página solo se mueve para arriba y abajo: de costado queda fija */
+html,body{touch-action:pan-y;overscroll-behavior:none}
+html{overflow-x:hidden}body{overflow-x:clip;max-width:100vw}
 button,a,input,[role=button]{touch-action:manipulation}
 input,textarea{font-size:max(16px,1em)}
 [hidden]{display:none!important}
@@ -172,18 +174,19 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 @media (max-height:520px) and (orientation:landscape){.chat{max-height:85vh}}
 /* Celular acostado: el mapa a la izquierda con todo el alto, los controles a la derecha */
 @media (orientation:landscape) and (max-height:560px) and (min-width:560px){
-  #app{max-width:none;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(250px,1fr);align-items:start;column-gap:10px;padding-block:6px 80px}
-  #app>.mapcol{grid-column:1;grid-row:1 / span 8;position:sticky;top:6px}
-  #app>*:not(.mapcol){grid-column:2}
+  #app:is([data-sc="play"],[data-sc="over"]){max-width:none;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(250px,1fr);align-items:start;column-gap:10px;padding-block:6px 80px}
+  #app:is([data-sc="play"],[data-sc="over"])>.mapcol{grid-column:1;grid-row:1 / span 8;position:sticky;top:6px}
+  #app:is([data-sc="play"],[data-sc="over"])>*:not(.mapcol){grid-column:2}
   .mapwrap{height:calc(100dvh - 12px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));min-height:0}
   .status{min-height:0}
   .mapwrap .hint{display:none}
 }
 @media (min-width:900px) and (min-height:561px){
-  #app{max-width:1280px;display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);align-items:start}
-  #app>.wide{grid-column:1/-1}
-  #app>.mapcol{grid-column:1;grid-row:2 / span 6}
-  #app:not([data-sc="home"])>*:not(.wide):not(.mapcol):not(.mast){grid-column:2}
+  /* Solo la partida (y el final, con el mapa) va en dos columnas; la sala y el inicio quedan centrados */
+  #app:is([data-sc="play"],[data-sc="over"]){max-width:1280px;display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);align-items:start}
+  #app:is([data-sc="play"],[data-sc="over"])>.wide{grid-column:1/-1}
+  #app:is([data-sc="play"],[data-sc="over"])>.mapcol{grid-column:1;grid-row:2 / span 6}
+  #app:is([data-sc="play"],[data-sc="over"])>*:not(.wide):not(.mapcol):not(.mast){grid-column:2}
   .mapwrap{height:auto;aspect-ratio:1000/714;max-height:calc(100vh - 120px)}
 }
 /* Compu y pantallas anchas: la pantalla de inicio en columnas */
@@ -195,6 +198,8 @@ details summary{font-family:var(--f-head);font-weight:600;letter-spacing:.1em;te
 .blv{display:inline-flex;gap:3px}
 .blv button{font-family:var(--f-head);font-weight:700;font-size:.8rem;padding:5px 8px;border-radius:8px;background:rgba(0,0,0,.25);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25)}
 .blv button[aria-pressed=true]{background:#fff;color:#1d2430;box-shadow:none}
+/* Sala de espera, pasar el celular y avisos: una columna centrada, igual en todos los juegos */
+#app:is([data-sc="lobby"],[data-sc="full"],[data-sc="handoff"],[data-sc="loading"],[data-sc="cover"]){max-width:640px;margin-inline:auto}
 </style>
 </head>
 <body>
@@ -477,7 +482,7 @@ function runBots(){
   if (!g || g.phase!=="play" || !isHost() || !g.seats[g.turn]?.bot) return;
   // Si en una partida contra la IA ya no queda nadie de carne y hueso, las IA terminan rápido.
   const humans = g.seats.some((p,i)=>!p.bot && !g.out[i]);
-  const rev=g.rev, d = !humans ? 120 : g.stage==="place" ? 900 : g.pendingMove ? 450 : 650;
+  const rev=g.rev, d = !humans ? 120 : g.stage==="place" ? 900 : g.pendingMove ? 700 : 1500;
   botT = setTimeout(() => {
     const cur=S.game; if (!cur || cur.rev!==rev) return;
     const s=cur.turn, lv=cur.seats[cur.turn]?.level || cur.level || "medio";
@@ -534,6 +539,7 @@ function doRoll(){
     clearInterval(rollT); S.rolling = false;
     const g2 = act((h,m)=>E.attack(h,m,from,to));
     if (!g2){ render(true); return; }
+    S.ownRoll = g2.lastRoll.n;
     buzz(g2.lastRoll.ld ? [40,30,40] : [70]);
     if (g2.owner[to]===seat()) S.tgt = null;          // conquistado: ahora toca pasar ejércitos
     else if (g2.armies[from]<2) S.tgt = null;          // ya no se puede seguir atacando desde ahí
@@ -751,7 +757,8 @@ function render(force){
     bind(sc);
   };
   if (same && (sc==="play" || sc==="over")) keepInPlace("#mapslot", paint); else { paint(); scrollTo(0,0); }
-  if (g?.lastRoll?.n!=null) S.seenRoll = g.lastRoll.n;
+  const lr=g?.lastRoll;
+  if (lr?.n!=null && (lr.n===S.ownRoll || S.spinFor!==lr.n || Date.now()-S.spinAt>=SPIN_MS)) S.seenRoll = lr.n;
   updateChat();
 }
 const mast = () => `<header class="mast"><img class="logo" src="icons/logo-192.png" alt="" width="76" height="76"><div><h1 class="brand">T.E.G.</h1><span class="label">Plan táctico y estratégico de la guerra</span></div></header>`;
@@ -772,10 +779,20 @@ const PIPS = {1:[5],2:[3,7],3:[3,5,7],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]}
 const pips = v => Array.from({length:9},(_,i)=>`<i${PIPS[v].includes(i+1)?' class="on"':""}></i>`).join("");
 const dieHTML = (v, seat, lost) => `<span class="d${lost?" lost":""}${v?"":" q"}" style="--dc:${colorOf(seat)};--di:${inkOf(seat)}">${v?pips(v):"?"}</span>`;
 // Última tirada: dados del atacante contra los del defensor; los que perdieron quedan tachados.
+// Dados que giran: cada tirada nueva de otro jugador (o de la IA) rueda un momento antes de mostrar el resultado.
+const SPIN_MS = 750;
+setInterval(()=>document.querySelectorAll(".dice.rolling .d").forEach(d=>{ d.classList.remove("q"); d.innerHTML = pips(1+Math.floor(Math.random()*6)); }), 80);
 function diceHTML(r){
   if (!r) return `<div class="dice empty"></div>`;
   const g=S.game, atk=g.owner[r.from], n=Math.min(r.a.length, r.d.length);
   const aLost=r.a.map((v,i)=>i<n && v<=r.d[i]), dLost=r.d.map((v,i)=>i<n && r.a[i]>v);
+  if (r.n!=null && r.n!==S.seenRoll && r.n!==S.ownRoll){
+    if (S.spinFor!==r.n){ S.spinFor=r.n; S.spinAt=Date.now(); setTimeout(()=>{ if (S.spinFor===r.n) render(true); }, SPIN_MS+20); }
+    if (Date.now()-S.spinAt < SPIN_MS)
+      return `<div class="dice rolling"><div class="dl">${esc(NAME(r.from))} ⚔ ${esc(NAME(r.to))}</div>
+        <div class="dr"><span class="ds">${r.a.map(()=>dieHTML(0,atk)).join("")}</span><span class="vs">vs</span><span class="ds">${r.d.map(()=>dieHTML(0,r.def)).join("")}</span></div>
+        <div class="dl muted">Tirando los dados…</div></div>`;
+  }
   const fresh = r.n!=null && r.n!==S.seenRoll;
   return `<div class="dice${fresh?" fresh":""}"><div class="dl">${esc(NAME(r.from))} ⚔ ${esc(NAME(r.to))}</div>
     <div class="dr"><span class="ds">${r.a.map((v,i)=>dieHTML(v,atk,aLost[i])).join("")}</span><span class="vs">vs</span><span class="ds">${r.d.map((v,i)=>dieHTML(v,r.def,dLost[i])).join("")}</span></div>
