@@ -1,5 +1,5 @@
 // Guarda la app para que abra rápido y sin señal; las partidas igual necesitan internet.
-const CACHE = "agente-secreto-v24";
+const CACHE = "agente-secreto-v25";
 const IDS = ["argentina","italia","turquia","suiza","alemania","canada","holanda","noruega","granbretana","eeuu","bolivia","uruguay","peru","irlanda","suecia","francia","espana","cuba","paraguay","mexico","israel","brasil","irak","chile"];
 const SHELL = ["./", "index.html", "mqtt.min.js", "manifest.webmanifest", "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png", ...IDS.map(id => `img/${id}.jpg`)];
 
@@ -15,7 +15,7 @@ self.addEventListener("fetch", e => {
   if (req.method !== "GET" || url.origin !== location.origin) return;
   // La página siempre se busca primero en la red para recibir actualizaciones.
   if (req.mode === "navigate") {
-    e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put("index.html", copy)); return r; }).catch(() => caches.match("index.html")));
+    e.respondWith(fetch(req, {cache:"no-cache"}).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put("index.html", copy)); return r; }).catch(() => caches.match("index.html")));
     return;
   }
   e.respondWith(caches.match(req).then(hit => hit || fetch(req)));
