@@ -246,7 +246,9 @@ const BROKERS = qs.get("broker") ? qs.get("broker").split(",") : [
   "wss://broker.emqx.io:8084/mqtt",
   "wss://test.mosquitto.org:8081/mqtt",
   "wss://mqtt.eclipseprojects.io:443/mqtt",
+  "wss://public:public@public.cloud.shiftr.io",   // puerto 443, el de las páginas web: casi ninguna red lo bloquea
 ];
+const APP_VERSION = "23-10-2026";
 const TOPIC = code => "fd-burako/v1/" + code;
 const isObj = v => v && typeof v==="object" && !Array.isArray(v);
 // Orden entre dos versiones de la partida: gana la de más jugadas; si empatan, la misma regla en todos los teléfonos.
@@ -269,7 +271,10 @@ const Net = {
   get client(){ return this.clients.find(c => c.connected) || null; },
   tryBroker(url){
     return new Promise((res, rej) => {
-      const c = mqtt.connect(url, {clientId:"bk_"+rid()+rid(), clean:true, keepalive:30, reconnectPeriod:0, connectTimeout:7000});
+      // Usuario y clave van aparte (no dentro de la dirección), como lo piden los navegadores.
+      const u = new URL(url), auth = u.username ? {username:decodeURIComponent(u.username), password:decodeURIComponent(u.password)} : {};
+      u.username = ""; u.password = "";
+      const c = mqtt.connect(u.toString(), {clientId:"bk_"+rid()+rid(), clean:true, keepalive:30, reconnectPeriod:0, connectTimeout:7000, ...auth});
       const fail = () => { clearTimeout(t); try { c.end(true); } catch {} rej(); };
       const t = setTimeout(fail, 8000);
       c.once("connect", () => { clearTimeout(t); res(c); });
@@ -296,6 +301,7 @@ const Net = {
     c.on("connect", () => { setNet("ok"); if (this._off){ this._off = false; toast("Conectado de nuevo."); } for (const tp of this.subs) c.subscribe(tp, {qos:1}); });
     for (const tp of this.subs) c.subscribe(tp, {qos:1}, () => this._ack(tp));
     c.on("message", (topic, buf) => this._msg(topic, buf));
+    if (S.net==="ok") setNet("ok");
   },
   _ack(tp){ const a = this.acks[tp]; if (a && !a.done){ a.done = true; a.resolve(); } },
   _newAck(tp){ let resolve; const p = new Promise(r => resolve = r); p.resolve = resolve; this.acks[tp] = p; return p; },
@@ -442,9 +448,10 @@ function setNet(state){
   S.net = state; S.netOk = state==="ok";
   const el = $("#netst"); if (!el) return;
   el.className = "netst " + state;
-  el.innerHTML = state==="ok" ? "● Conectado al servidor de partidas"
+  el.innerHTML = state==="ok" ? `● Conectado (${Net.clients.filter(c=>c.connected).length} de ${BROKERS.length} servidores)`
     : state==="connecting" ? "● Conectando al servidor de partidas…"
     : `● Sin conexión al servidor de partidas <button type="button" class="linkbtn" id="netretry">Reintentar</button>`;
+  el.insertAdjacentHTML("beforeend", ` <span style="opacity:.6;font-weight:500">· versión ${APP_VERSION}</span>`);
   const r = $("#netretry"); if (r) r.onclick = () => ensureNet();
 }
 async function ensureNet(){
@@ -510,7 +517,7 @@ async function joinGame(raw){
   if (code.length!==4){ S.joinErr="El código tiene 4 letras."; render(true); return; }
   if (!await ensureNet()) return;
   const snap = await S.db.doc("games/"+code).get({search:true}).catch(()=>null);
-  if (!snap || !snap.exists){ S.joinErr="No existe una partida con ese código."; render(true); return; }
+  if (!snap || !snap.exists){ S.joinErr="No encontramos esa partida. Revisá el código y que el que la creó siga en la sala. Si sigue sin aparecer, recarguen la página en los dos dispositivos y prueben de nuevo."; render(true); return; }
   const g = snap.data(); S.code = code;
   if (g.seats.some(p=>p && p.uid===S.uid && !p.bot)){ await enter(code); return; }
   const mine = g.phase==="lobby" ? -1 : g.seats.findIndex(p=>p && !p.bot && sameNick(p.nick, S.nick));

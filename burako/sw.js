@@ -1,5 +1,5 @@
 // Guarda la app para que abra rápido y sin señal; las partidas online igual necesitan internet.
-const CACHE = "burako-v21";
+const CACHE = "burako-v22";
 const SHELL = ["./", "index.html", "engine.js", "mqtt.min.js", "manifest.webmanifest", "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", e => {
