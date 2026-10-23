@@ -439,6 +439,34 @@ async function createOnline(){
   if (!await save(base({code, mode:"online", n:S.nOnline, seats, host:S.uid}))){ S.code=null; return; }
   await enter(code);
 }
+// Volver a una partida online: el que entra con el mismo nombre (o elige quién es) recupera su lugar,
+// aunque el navegador ya no lo reconozca (memoria borrada, o el ícono del inicio en vez de Safari).
+const sameNick = (a,b) => String(a||"").trim().toLowerCase() === String(b||"").trim().toLowerCase();
+async function reclaimSeat(g, i){
+  const old=g.seats[i].uid, seats=g.seats.slice(); seats[i]={...seats[i], uid:S.uid};
+  const g2={...g, seats}; if (g.host===old) g2.host=S.uid;
+  S.rejoin=null;
+  if (!await save(g2)){ S.code=null; return; }
+  toast(`Volviste a la partida como ${seats[i].nick}.`);
+  await enter(g.code||S.code);
+}
+async function pickRejoin(i){
+  const code=S.rejoin?.code; if (!code) return;
+  S.code=code; const snap=await S.db.doc("games/"+code).get().catch(()=>null);
+  if (!snap?.exists){ S.rejoin=null; S.code=null; S.joinErr="Esa partida ya no existe."; render(true); return; }
+  await reclaimSeat(snap.data(), i);
+}
+function rejoinHTML(){
+  const last=LS.get("last");
+  if (S.rejoin) return `<section class="panel" style="box-shadow:inset 0 0 0 2px var(--gold,#e6b94f)"><span class="label">Partida ${esc(S.rejoin.code)} en curso</span>
+    <p>¿Quién sos? Tocá tu nombre para volver a tu lugar.</p>
+    <div class="row">${S.rejoin.list.map(([i,n])=>`<button class="btn" type="button" data-rj="${i}">Soy ${esc(n)}</button>`).join("")}</div>
+    <button class="btn ghost small" type="button" id="rjx">Cancelar</button></section>`;
+  if (last && !S.code) return `<section class="panel"><span class="label">Tu última partida online</span>
+    <div class="ask"><div class="code" style="font-size:2rem;padding:4px 0;border:0;flex:1;text-align:left">${esc(last)}</div><button class="btn" type="button" id="rjlast">Volver a unirme</button></div>
+    <button class="linkbtn" type="button" id="rjforget" style="align-self:flex-start;font-size:.85rem">Olvidar esta partida</button></section>`;
+  return "";
+}
 async function joinGame(raw){
   if (!saveNick()) return;
   const code = (raw||"").toUpperCase().replace(/[^A-Z]/g,""); S.joinCode = code;
@@ -448,8 +476,15 @@ async function joinGame(raw){
   if (!snap || !snap.exists){ S.joinErr="No existe una partida con ese código."; render(true); return; }
   const g = snap.data(); S.code = code;
   if (g.seats.some(p=>p && p.uid===S.uid && !p.bot)){ await enter(code); return; }
+  const mine = g.phase==="lobby" ? -1 : g.seats.findIndex(p=>p && !p.bot && sameNick(p.nick, S.nick));
+  if (mine>=0){ await reclaimSeat(g, mine); return; }
   const free = g.seats.findIndex(p=>!p);
-  if (g.phase!=="lobby" || free<0){ S.code=null; S.joinErr="Esa partida ya está completa."; render(true); return; }
+  if (g.phase!=="lobby" && g.phase){
+    // Ya empezó: si no coincide el nombre, que elija quién es.
+    const list = g.seats.map((p,i)=>p && !p.bot ? [i,p.nick] : null).filter(Boolean);
+    S.code=null; S.rejoin={code, list}; S.joinErr=""; render(true); return;
+  }
+  if (free<0){ S.code=null; S.joinErr="Esa partida ya está completa."; render(true); return; }
   const seats = g.seats.slice(); seats[free] = {uid:S.uid, nick:S.nick};
   if (!await save({...g, seats})){ S.code=null; return; }
   await enter(code);
@@ -474,6 +509,7 @@ async function createLocal(){
   S.activeSeat = 0;
 }
 async function enter(code){
+  if (!isLocal(code)) LS.set("last", code);
   S.code = code; LS.set("code", code); S.joinErr="";
   startChat(code);
   if (S.unsub) S.unsub();
@@ -736,7 +772,7 @@ function histHTML(){
 
 const VIEWS = {
   loading: () => `${mast()}<p class="muted">Llegando a Springfield…</p>`,
-  home: () => `${mast()}
+  home: () => `${mast()}${rejoinHTML()}
     <section class="panel">
       <div class="field"><label class="label" for="nick">Tu nombre</label><input type="text" id="nick" maxlength="16" autocomplete="nickname" placeholder="Ej.: Fran" value="${esc(S.nick)}"></div>
       <div class="field"><label class="label" for="join">¿Te pasaron un código?</label>
@@ -849,6 +885,10 @@ function bind(sc){
   on("#leave", leave);
   const segs = (key, fn) => document.querySelectorAll(`[data-${key}]`).forEach(b=>b.onclick=()=>{ document.querySelectorAll(`[data-${key}]`).forEach(x=>x.setAttribute("aria-pressed", x===b)); fn(b.dataset[key]); });
   if (sc==="home"){
+    on("#rjlast", ()=>busy("rjlast","Volviendo…",()=>joinGame(LS.get("last"))));
+    on("#rjforget", ()=>{ LS.set("last", null); render(true); });
+    on("#rjx", ()=>{ S.rejoin=null; render(true); });
+    document.querySelectorAll("[data-rj]").forEach(b=>b.onclick=()=>pickRejoin(+b.dataset.rj));
     on("#create", ()=>busy("create","Creando partida…",createOnline));
     const j=$("#join"); on("#joinb", ()=>busy("joinb","Buscando…",()=>joinGame(j.value)));
     j.onkeydown=e=>{ if (e.key==="Enter") busy("joinb","Buscando…",()=>joinGame(j.value)); };

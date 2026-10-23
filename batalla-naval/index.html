@@ -404,7 +404,16 @@ const privRef = () => S.db.doc(privPath(S.game?.local ? S.activeSeat : null));
 const seat = () => { const g=S.game; if(!g) return null; if (g.local) return S.activeSeat; if (g.players?.A?.uid===S.uid) return "A"; if (g.players?.B?.uid===S.uid) return "B"; return null; };
 const nickOf = s => S.game?.players?.[s]?.nick || (s==="A"?"Jugador 1":"Jugador 2");
 const loadPriv = sd => { const d = LS.get("doc:"+privPath(sd)); return d && d.match===S.game.match ? d : {match:S.game.match, fleet:[], ok:false}; };
-const savePriv = () => privRef().set({...S.priv});
+const savePriv = () => { backupPriv(); return privRef().set({...S.priv}); };
+// Respaldo de tu flota en la partida online: si volvés desde otro navegador (o del ícono del inicio a Safari) la recuperás.
+const backupRef = sd => NetDB.doc(`games/${S.code}-p${sd}`);
+function backupPriv(){ const g=S.game, me=seat(); if (!g || g.local || isLocal(S.code) || !me) return; backupRef(me).set({...S.priv}).catch(()=>{}); }
+const restoring = {};
+async function restorePriv(g, me){
+  const k=S.code+me+g.match; if (restoring[k]) return; restoring[k]=true;
+  const snap = await backupRef(me).get().catch(()=>null), d = snap?.exists ? snap.data() : null;
+  if (d && d.match===S.game?.match && d.fleet?.length && !S.priv.fleet.length){ S.priv={...d}; privRef().set({...S.priv}).catch(()=>{}); onGame(); }
+}
 
 async function write(patch){
   try { await ref().update(patch); return true; }
@@ -456,6 +465,32 @@ async function createGame(){
   catch { toast("No se pudo crear la partida. Revisá tu conexión."); S.code=null; return; }
   await enter(code);
 }
+// Volver a una partida online: el que entra con el mismo nombre (o elige quién es) recupera su lugar,
+// aunque el navegador ya no lo reconozca (memoria borrada, o el ícono del inicio en vez de Safari).
+const sameNick = (a,b) => String(a||"").trim().toLowerCase() === String(b||"").trim().toLowerCase();
+async function reclaimSide(g, sd){
+  S.rejoin=null; S.code=g.code||S.code;
+  if (!await write({players:{[sd]:{...g.players[sd], uid:S.uid}}})){ S.code=null; return; }
+  toast(`Volviste a la partida como ${g.players[sd].nick}.`);
+  await enter(S.code);
+}
+async function pickRejoin(sd){
+  const code=S.rejoin?.code; if (!code) return;
+  S.code=code; const snap=await S.db.doc("games/"+code).get().catch(()=>null);
+  if (!snap?.exists){ S.rejoin=null; S.code=null; S.joinErr="Esa partida ya no existe."; render(true); return; }
+  await reclaimSide(snap.data(), sd);
+}
+function rejoinHTML(){
+  const last=LS.get("last");
+  if (S.rejoin) return `<section class="panel" style="box-shadow:inset 0 0 0 2px var(--brass,#e0aa45)"><span class="label">Partida ${esc(S.rejoin.code)} en curso</span>
+    <p>¿Quién sos? Tocá tu nombre para volver a tu lugar.</p>
+    <div class="row">${S.rejoin.list.map(([sd,n])=>`<button class="btn" type="button" data-rj="${sd}">Soy ${esc(n)}</button>`).join("")}</div>
+    <button class="btn ghost small" type="button" id="rjx">Cancelar</button></section>`;
+  if (last && !S.code) return `<section class="panel"><span class="label">Tu última partida online</span>
+    <div class="ask"><div class="code" style="font-size:2rem;padding:4px 0;border:0;flex:1;text-align:left">${esc(last)}</div><button class="btn" type="button" id="rjlast">Volver a unirme</button></div>
+    <button class="linkbtn" type="button" id="rjforget" style="align-self:flex-start;font-size:.85rem">Olvidar esta partida</button></section>`;
+  return "";
+}
 async function joinGame(raw){
   if (!saveNick()) return;
   const code = (raw||"").toUpperCase().replace(/[^A-Z]/g,""); S.joinCode = code;
@@ -466,7 +501,13 @@ async function joinGame(raw){
   const g = snap.data();
   S.code = code;
   if (g.players?.A?.uid===S.uid || g.players?.B?.uid===S.uid){ await enter(code); return; }
-  if (g.players?.B){ S.code=null; S.joinErr="Esa partida ya tiene dos jugadores."; render(true); return; }
+  if (g.players?.B){
+    // Ya empezó: el mismo nombre recupera su lugar; si no coincide, que elija quién es.
+    const sd = ["A","B"].find(x=>sameNick(g.players[x]?.nick, S.nick));
+    if (sd){ await reclaimSide(g, sd); return; }
+    S.code=null; S.rejoin={code, list:[["A",g.players.A?.nick||"Jugador A"],["B",g.players.B.nick]]}; S.joinErr=""; render(true); return;
+  }
+  if (false){ S.code=null; S.joinErr="Esa partida ya tiene dos jugadores."; render(true); return; }
   if (!await write({players:{B:{uid:S.uid,nick:S.nick}}, phase:"place"})){ S.code=null; return; }
   await enter(code);
 }
@@ -490,6 +531,7 @@ async function createLocalGame(){
   S.activeSeat = "A";
 }
 async function enter(code){
+  if (!isLocal(code)) LS.set("last", code);
   S.code = code; LS.set("code", code); S.joinErr="";
   startChat(code);
   if (!/^LP/.test(code)){
@@ -558,6 +600,7 @@ function onGame(){
   const me = seat();
   if (!me){ render(); return; }
   if (S.priv.match !== g.match){ S.priv = {match:g.match, fleet:[], ok:false}; S.sel="portaaviones"; }
+  if (!S.priv.fleet.length && !g.ai) restorePriv(g, me);
   const op = other(me);
   // Me dispararon: mi celular conoce mi flota y responde.
   if (g.phase==="play" && g.pending && g.pending.to===me && !S.done[g.pending.id] && S.priv.fleet.length===FLEET.length){
@@ -834,7 +877,7 @@ function histHTML(){
 
 const VIEWS = {
   loading: () => `${mast()}<p class="muted">Preparando la flota…</p>`,
-  home: () => `${mast()}
+  home: () => `${mast()}${rejoinHTML()}
     <section class="panel">
       <div class="field"><label class="label" for="nick">Tu nombre</label>
         <input type="text" id="nick" maxlength="16" autocomplete="nickname" placeholder="Ej.: Fran" value="${esc(S.nick)}"></div>
@@ -932,8 +975,13 @@ const VIEWS = {
 };
 
 function bind(sc){
+  const on = (sel, fn) => { const el=$(sel); if (el) el.onclick=fn; };
   const l=$("#leave"); if (l) l.onclick=leave;
   if (sc==="home"){
+    on("#rjlast", ()=>busy("rjlast","Volviendo…",()=>joinGame(LS.get("last"))));
+    on("#rjforget", ()=>{ LS.set("last", null); render(true); });
+    on("#rjx", ()=>{ S.rejoin=null; render(true); });
+    document.querySelectorAll("[data-rj]").forEach(b=>b.onclick=()=>pickRejoin(b.dataset.rj));
     $("#create").onclick=()=>busy("create","Creando partida…",createGame);
     const j=$("#join"); $("#joinb").onclick=()=>busy("joinb","Buscando…",()=>joinGame(j.value));
     j.onkeydown=e=>{ if(e.key==="Enter") busy("joinb","Buscando…",()=>joinGame(j.value)); };

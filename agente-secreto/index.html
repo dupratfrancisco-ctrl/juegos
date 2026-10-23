@@ -532,9 +532,18 @@ async function write(patch){
   }
 }
 let privT;
+// Respaldo de tu tarjeta en la partida online: si volvés desde otro navegador (o del ícono del inicio a Safari) la recuperás.
+const backupRef = sd => NetDB.doc(`games/${S.code}-p${sd}`);
+function backupPriv(){ const g=S.game, me=seat(); if (!g || g.local || isLocal(S.code) || !me) return; backupRef(me).set({...S.priv, down:[...(S.priv.down||[])]}).catch(()=>{}); }
+const restoring = {};
+async function restorePriv(g, me){
+  const k=S.code+me+g.round; if (restoring[k]) return; restoring[k]=true;
+  const snap = await backupRef(me).get().catch(()=>null), d = snap?.exists ? snap.data() : null;
+  if (d && d.round===S.game?.round && d.secret && !S.priv.secret){ S.priv={...d, down:[...(d.down||[])]}; privRef().set({...S.priv}).catch(()=>{}); screen=""; onGame(); }
+}
 function savePriv(now){
   clearTimeout(privT);
-  const go = () => privRef().set({...S.priv}).catch(()=>{});
+  const go = () => { privRef().set({...S.priv}).catch(()=>{}); backupPriv(); };
   if (now || S.game?.local) return go();
   privT = setTimeout(go, 600);
 }
@@ -628,6 +637,32 @@ async function createGame(){
   await enter(code);
 }
 
+// Volver a una partida online: el que entra con el mismo nombre (o elige quién es) recupera su lugar,
+// aunque el navegador ya no lo reconozca (memoria borrada, o el ícono del inicio en vez de Safari).
+const sameNick = (a,b) => String(a||"").trim().toLowerCase() === String(b||"").trim().toLowerCase();
+async function reclaimSide(g, sd){
+  S.rejoin=null; S.code=g.code||S.code;
+  if (!await write({players:{[sd]:{...g.players[sd], uid:S.uid}}})){ S.code=null; return; }
+  toast(`Volviste a la partida como ${g.players[sd].nick}.`);
+  await enter(S.code);
+}
+async function pickRejoin(sd){
+  const code=S.rejoin?.code; if (!code) return;
+  S.code=code; const snap=await S.db.doc("games/"+code).get().catch(()=>null);
+  if (!snap?.exists){ S.rejoin=null; S.code=null; S.joinErr="Esa partida ya no existe."; (screen="", render()); return; }
+  await reclaimSide(snap.data(), sd);
+}
+function rejoinHTML(){
+  const last=LS.get("last");
+  if (S.rejoin) return `<section class="panel" style="box-shadow:inset 0 0 0 2px var(--brass,#e0aa45)"><span class="label">Partida ${esc(S.rejoin.code)} en curso</span>
+    <p>¿Quién sos? Tocá tu nombre para volver a tu lugar.</p>
+    <div class="row">${S.rejoin.list.map(([sd,n])=>`<button class="btn" type="button" data-rj="${sd}">Soy ${esc(n)}</button>`).join("")}</div>
+    <button class="btn ghost small" type="button" id="rjx">Cancelar</button></section>`;
+  if (last && !S.code) return `<section class="panel"><span class="label">Tu última partida online</span>
+    <div class="ask"><div class="code" style="font-size:2rem;padding:4px 0;border:0;flex:1;text-align:left">${esc(last)}</div><button class="btn" type="button" id="rjlast">Volver a unirme</button></div>
+    <button class="linkbtn" type="button" id="rjforget" style="align-self:flex-start;font-size:.85rem">Olvidar esta partida</button></section>`;
+  return "";
+}
 async function joinGame(raw){
   if (!saveNick()) return;
   const code = (raw||"").toUpperCase().replace(/[^A-Z]/g,"");
@@ -638,13 +673,20 @@ async function joinGame(raw){
   const g = snap.data();
   S.code = code;
   if (g.players?.A?.uid===S.uid || g.players?.B?.uid===S.uid){ await enter(code); return; }
-  if (g.players?.B){ S.code=null; S.joinErr="Esa partida ya tiene dos agentes."; render(); return; }
+  if (g.players?.B){
+    // Ya empezó: el mismo nombre recupera su lugar; si no coincide, que elija quién es.
+    const sd = ["A","B"].find(x=>sameNick(g.players[x]?.nick, S.nick));
+    if (sd){ await reclaimSide(g, sd); return; }
+    S.code=null; S.rejoin={code, list:[["A",g.players.A?.nick||"Jugador A"],["B",g.players.B.nick]]}; S.joinErr=""; screen=""; render(); return;
+  }
+  if (false){ S.code=null; S.joinErr="Esa partida ya tiene dos agentes."; render(); return; }
   const ok = await write({players:{B:{uid:S.uid,nick:S.nick}}, phase:"pick"});
   if (!ok){ S.code=null; return; }
   await enter(code);
 }
 
 async function enter(code){
+  if (!isLocal(code)) LS.set("last", code);
   S.code = code; LS.set("code", code); S.joinErr="";
   startChat(code);
   const p = S.game?.local || /^LP/.test(code) ? null : await privRef().get().catch(()=>null);
@@ -735,6 +777,7 @@ function onGame(){
   }
   if (!me){ render(); return; }
   if (S.priv.round !== g.round){ S.priv = {round:g.round, secret:null, down:[]}; S.accuse=false; S.sel=null; }
+  if (!S.priv.secret && !g.ai && g.phase!=="lobby") restorePriv(g, me);
 
   // Me acusaron: mi teléfono verifica contra mi tarjeta secreta (nadie más la conoce).
   if (g.phase==="play" && g.pending?.type==="acc" && g.pending.to===me && S.priv.secret && !S.done[g.pending.id]){
@@ -918,7 +961,7 @@ const VIEWS = {
   loading: () => `${mast()}<p class="muted">Conectando con la central…</p>`,
   offline: () => `${mast()}<section class="dossier"><h2 class="verdict">Sin conexión a la central</h2>
     ${offlineWhy()}<button class="btn" id="retry" type="button">Reintentar</button></section>${rules()}`,
-  home: () => `${mast()}
+  home: () => `${mast()}${rejoinHTML()}
     <section class="dossier">
       <div class="field"><label class="label" for="nick">Tu nombre de agente</label>
         <input type="text" id="nick" maxlength="16" autocomplete="nickname" placeholder="Ej.: Fran" value="${esc(S.nick)}"></div>
@@ -1107,8 +1150,13 @@ function updateBoard(){
 }
 
 function bind(sc){
+  const on = (sel, fn) => { const el=$(sel); if (el) el.onclick=fn; };
   const l=$("#leave"); if (l) l.onclick=leave;
   if (sc==="home"){
+    on("#rjlast", ()=>busy("rjlast","Volviendo…",()=>joinGame(LS.get("last"))));
+    on("#rjforget", ()=>{ LS.set("last", null); screen=""; render(); });
+    on("#rjx", ()=>{ S.rejoin=null; screen=""; render(); });
+    document.querySelectorAll("[data-rj]").forEach(b=>b.onclick=()=>pickRejoin(b.dataset.rj));
     document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ S.target=+b.dataset.t; document.querySelectorAll("[data-t]").forEach(x=>x.setAttribute("aria-pressed", +x.dataset.t===S.target)); });
     $("#create").onclick=()=>busy("create","Creando partida…",createGame);
     setNet(S.net || (S.netOk ? "ok" : "connecting"));

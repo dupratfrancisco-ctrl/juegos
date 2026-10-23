@@ -1,5 +1,5 @@
 // Guarda la app para que abra rápido y sin señal; las partidas online igual necesitan internet.
-const CACHE = "batalla-naval-v11";
+const CACHE = "batalla-naval-v12";
 const SHELL = ["./", "index.html", "mqtt.min.js", "manifest.webmanifest", "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", e => {
