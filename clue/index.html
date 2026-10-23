@@ -260,7 +260,7 @@ const NAME = E.NAME;
    Las partidas viajan por un servidor MQTT público (sin cuentas). Cada partida es un tema con el
    último estado retenido. Toda la partida viaja junta: la pantalla solo muestra tus cartas. */
 const qs = new URLSearchParams(location.search);
-const BROKERS = qs.get("broker") ? [qs.get("broker")] : [
+const BROKERS = qs.get("broker") ? qs.get("broker").split(",") : [
   "wss://broker.hivemq.com:8884/mqtt",
   "wss://broker.emqx.io:8084/mqtt",
   "wss://test.mosquitto.org:8081/mqtt",
@@ -296,17 +296,23 @@ const Net = {
   async _connect(){
     if (this.client?.connected) return;
     if (this.client){ try { this.client.end(true); } catch {} this.client=null; }
-    for (const url of BROKERS){
-      try { this.client = await this.tryBroker(url); break; } catch {}
+    let pref=null; try { pref=JSON.parse(localStorage.getItem("net:broker")); } catch {}
+    const order = qs.get("broker") ? BROKERS : [...BROKERS].sort((a,b)=>(b===pref)-(a===pref));
+    for (const url of order){
+      try { const c = await this.tryBroker(url); this._setup(c, url); return; } catch {}
     }
-    if (!this.client) throw new Error("net");
-    const c = this.client;
+    throw new Error("net");
+  },
+  _setup(c, url){
+    this.client = c; this.url = url;
+    try { localStorage.setItem("net:broker", JSON.stringify(url)); } catch {}
     c.options.reconnectPeriod = 2000;
     let wasOff = false;
-    c.on("offline", () => { setNet("connecting"); if (!wasOff){ wasOff=true; toast("Sin internet. Reconectando…", 4000); } });
-    c.on("connect", () => { setNet("ok"); if (wasOff){ wasOff=false; toast("Conectado de nuevo."); } for (const tp of this.subs) c.subscribe(tp, {qos:1}); });
-    for (const tp of this.subs) c.subscribe(tp, {qos:1});
+    c.on("offline", () => { if (this.client!==c) return; setNet("connecting"); if (!wasOff){ wasOff=true; toast("Sin internet. Reconectando…", 4000); } });
+    c.on("connect", () => { if (this.client!==c) return; setNet("ok"); if (wasOff){ wasOff=false; toast("Conectado de nuevo."); } for (const tp of this.subs) c.subscribe(tp, {qos:1}); });
+    for (const tp of this.subs) this.acks[tp] = new Promise(r => c.subscribe(tp, {qos:1}, () => r()));
     c.on("message", (topic, buf) => {
+      if (this.client!==c) return;
       const code = topic.split("/").pop();
       let data = null;
       if (buf.length) { try { data = JSON.parse(buf.toString()); } catch { return; } }
@@ -316,6 +322,31 @@ const Net = {
       (this.waiters[code]||[]).forEach(f=>f()); delete this.waiters[code];
       g.fns.forEach(fn => fn());
     });
+  },
+  // Vuelve a pedirle al servidor el último estado de un tema (por si antes no estaba).
+  resub(code){
+    const tp = TOPIC(code), c = this.client;
+    this.acks[tp] = new Promise(r => c.unsubscribe(tp, () => c.subscribe(tp, {qos:1}, () => r())));
+  },
+  // La partida no está en este servidor: se busca en los otros y, si aparece, el teléfono se pasa a ese.
+  async locate(code){
+    const tp = TOPIC(code);
+    for (const url of BROKERS){
+      if (url===this.url) continue;
+      let c; try { c = await this.tryBroker(url); } catch { continue; }
+      const found = await new Promise(res => {
+        const t = setTimeout(() => res(false), 3000);
+        c.on("message", (topic, buf) => { if (topic===tp && buf.length){ clearTimeout(t); res(true); } });
+        c.subscribe(tp, {qos:1});
+      });
+      if (!found){ try { c.end(true); } catch {} continue; }
+      try { c.unsubscribe(tp); } catch {}
+      const old = this.client; delete this.games[code]; this.subs.delete(tp);
+      this._setup(c, url);
+      if (old){ try { old.end(true); } catch {} }
+      return true;
+    }
+    return false;
   },
   acks:{}, wid:rid()+rid(), healT:{},
   // Reenvía la versión que tengo (la más nueva) para que el servidor y los demás teléfonos se pongan al día.
@@ -351,17 +382,24 @@ const Net = {
 const snapOf = d => ({exists:!!d, data:()=>d});
 function gameRef(code){
   return {
-    get(){
-      const g = Net.sub(code);
-      if (g.seen) return Promise.resolve(snapOf(g.data));
+    async get(opts={}){
+      let g = Net.sub(code);
+      if (g.seen && g.data) return snapOf(g.data);
+      if (g.seen){ g.seen=false; Net.resub(code); }
+      const snap = await this.wait();
+      if (snap.exists || !opts.search) return snap;
+      if (!await Net.locate(code)) return snap;
+      Net.sub(code); return this.wait();
+    },
+    wait(){
       // Un tema sin mensaje retenido no responde. El servidor manda el mensaje retenido apenas confirma
       // la suscripción, así que si poco después no llegó nada, la partida no existe.
       return new Promise(res => {
         let over = false;
         const fin = () => { if (over) return; over = true; res(snapOf(Net.games[code].data)); };
         (Net.waiters[code] ||= []).push(fin);
-        Net.acks[TOPIC(code)].then(() => setTimeout(fin, 900));
-        setTimeout(fin, 6000);
+        Net.acks[TOPIC(code)].then(() => setTimeout(fin, 2500));
+        setTimeout(fin, 8000);
       });
     },
     set(data){ return Net.publish(code, {...data, rev:((Net.games[code]?.data?.rev)||0)+1}); },
@@ -477,7 +515,7 @@ async function reclaimSeat(g, i){
 }
 async function pickRejoin(i){
   const code=S.rejoin?.code; if (!code) return;
-  S.code=code; const snap=await S.db.doc("games/"+code).get().catch(()=>null);
+  S.code=code; const snap=await S.db.doc("games/"+code).get({search:true}).catch(()=>null);
   if (!snap?.exists){ S.rejoin=null; S.code=null; S.joinErr="Esa partida ya no existe."; render(true); return; }
   await reclaimSeat(snap.data(), i);
 }
@@ -497,7 +535,7 @@ async function joinGame(raw){
   const code = (raw||"").toUpperCase().replace(/[^A-Z]/g,""); S.joinCode = code;
   if (code.length!==4){ S.joinErr="El código tiene 4 letras."; render(true); return; }
   if (!await ensureNet()) return;
-  const snap = await S.db.doc("games/"+code).get().catch(()=>null);
+  const snap = await S.db.doc("games/"+code).get({search:true}).catch(()=>null);
   if (!snap || !snap.exists){ S.joinErr="No existe una partida con ese código."; render(true); return; }
   const g = snap.data(); S.code = code;
   if (g.seats.some(p=>p && p.uid===S.uid && !p.bot)){ await enter(code); return; }
@@ -972,7 +1010,7 @@ async function boot(){
   setNet("connecting");
   try { await Net.connect(); setNet("ok"); } catch { setNet("fail"); }
   if (code && !isLocal(code) && S.netOk && !S.code){
-    const snap=await S.db.doc("games/"+code).get().catch(()=>null), g=snap?.exists?snap.data():null;
+    const snap=await S.db.doc("games/"+code).get({search:true}).catch(()=>null), g=snap?.exists?snap.data():null;
     if (g && g.seats.some(p=>p && !p.bot && p.uid===uid)){ await enter(code); return; }
     LS.set("code", null);
   }
