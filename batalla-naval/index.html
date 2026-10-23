@@ -242,6 +242,14 @@ const BROKERS = qs.get("broker") ? [qs.get("broker")] : [
 ];
 const TOPIC = code => "fd-batalla-naval/v1/" + code;
 const isObj = v => v && typeof v==="object" && !Array.isArray(v);
+// Orden entre dos versiones de la partida: gana la de más jugadas; si empatan, la misma regla en todos los teléfonos.
+const sameState = (a,b) => (a.rev||0)===(b.rev||0) && a.w===b.w && a.t===b.t;
+const newerState = (a,b) => (a.rev||0)!==(b.rev||0) ? (a.rev||0)>(b.rev||0) : (a.t||0)!==(b.t||0) ? (a.t||0)>(b.t||0) : String(a.w||"")>String(b.w||"");
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden){ hiddenAt = Date.now(); return; }
+  if (Date.now() - hiddenAt > 2500) Net.refresh();
+});
 function merge(base, patch){
   const out = isObj(base) ? {...base} : {};
   for (const k in patch) out[k] = isObj(patch[k]) && isObj(out[k]) ? merge(out[k], patch[k]) : patch[k];
@@ -271,18 +279,33 @@ const Net = {
     let wasOff = false;
     c.on("offline", () => { setNet("connecting"); if (!wasOff){ wasOff=true; toast("Sin internet. Reconectando…", 4000); } });
     c.on("connect", () => { setNet("ok"); if (wasOff){ wasOff=false; toast("Conectado de nuevo."); } for (const tp of this.subs) c.subscribe(tp, {qos:1}); });
+    for (const tp of this.subs) c.subscribe(tp, {qos:1});
     c.on("message", (topic, buf) => {
       const code = topic.split("/").pop();
       let data = null;
       if (buf.length) { try { data = JSON.parse(buf.toString()); } catch { return; } }
       const g = this.games[code] || (this.games[code] = {data:null, seen:false, fns:new Set()});
-      if (data && g.data && (data.rev||0) < (g.data.rev||0)) return;
+      if (data && g.data && !sameState(data, g.data) && !newerState(data, g.data)){ this.heal(code); return; }
       g.data = data; g.seen = true;
       (this.waiters[code]||[]).forEach(f=>f()); delete this.waiters[code];
       g.fns.forEach(fn => fn());
     });
   },
-  acks:{},
+  acks:{}, wid:rid()+rid(), healT:{},
+  // Reenvía la versión que tengo (la más nueva) para que el servidor y los demás teléfonos se pongan al día.
+  heal(code){
+    if (this.healT[code] || !this.client?.connected) return;
+    this.healT[code] = setTimeout(() => {
+      delete this.healT[code];
+      const d = this.games[code]?.data; if (d && this.client?.connected) this.client.publish(TOPIC(code), JSON.stringify(d), {qos:1, retain:true});
+    }, 300 + Math.random()*500);
+  },
+  // Al volver a la app (celular desbloqueado, o desde otra app) se reconecta y vuelve a pedir el último estado.
+  refresh(){
+    const c = this.client; if (!c) return;
+    if (!c.connected){ this.connect().catch(()=>{}); return; }
+    for (const tp of this.subs) c.unsubscribe(tp, () => c.subscribe(tp, {qos:1}));
+  },
   sub(code){
     const tp = TOPIC(code);
     if (!this.subs.has(tp)){
@@ -292,6 +315,8 @@ const Net = {
     return this.games[code] || (this.games[code] = {data:null, seen:false, fns:new Set()});
   },
   publish(code, data){
+    if (!this.client?.connected){ this.connect().catch(()=>{}); toast("Reconectando… probá de nuevo en un momento."); return Promise.reject({code:"offline"}); }
+    if (data) data = {...data, w:this.wid, t:Date.now()};
     const g = this.sub(code); g.data = data; g.seen = true;
     g.fns.forEach(fn => fn());
     return new Promise((res, rej) => this.client.publish(TOPIC(code), JSON.stringify(data), {qos:1, retain:true}, e => e ? rej({code:"unavailable"}) : res()));
